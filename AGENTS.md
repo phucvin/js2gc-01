@@ -29,13 +29,3 @@ You are required to log your interactions.
 ## Memory Retrieval
 
 When you need to look for useful information in the past, scan the `agents-memory` directory.
-
-## Code Organization
-
-All prototypes, demos, and example codes created by agents must be placed under the `codes/` directory. Do not clutter the root directory.
-
-## Documentation Maintenance
-
-When code changes are made to a demo or example project in a corresponding directory:
-1.  Run the updated code to generate new output.
-2.  Update the "Example Output" or "Demo" section in the project's `README.md` to reflect the current behavior.
