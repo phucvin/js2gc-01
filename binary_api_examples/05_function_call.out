@@ -1,0 +1,22 @@
+--- 05_function_call.ts ---
+(module
+ (type $0 (func (param i32) (result i32)))
+ (type $1 (func (param i32 i32) (result i32)))
+ (export "sum_of_squares" (func $sum_of_squares))
+ (func $square (param $0 i32) (result i32)
+  (i32.mul
+   (local.get $0)
+   (local.get $0)
+  )
+ )
+ (func $sum_of_squares (param $0 i32) (param $1 i32) (result i32)
+  (i32.add
+   (call $square
+    (local.get $0)
+   )
+   (call $square
+    (local.get $1)
+   )
+  )
+ )
+)

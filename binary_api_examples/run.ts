@@ -3,15 +3,25 @@ import fs from "fs";
 import path from "path";
 
 const examplesDir = "binary_api_examples";
-const files = fs.readdirSync(examplesDir).filter(f => f.endsWith(".ts") && f !== "run.ts");
+// Ensure we are looking at the right directory if run from root
+const targetDir = fs.existsSync(examplesDir) ? examplesDir : ".";
 
-console.log(`Found ${files.length} examples.`);
+const files = fs.readdirSync(targetDir).filter(f => f.endsWith(".ts") && f !== "run.ts");
+
+console.log(`Found ${files.length} examples in ${targetDir}.`);
 
 files.forEach(file => {
   console.log(`Running ${file}...`);
   try {
-    const output = execSync(`npx ts-node ${path.join(examplesDir, file)}`, { encoding: "utf-8" });
-    console.log(output);
+    const filePath = path.join(targetDir, file);
+    const output = execSync(`npx ts-node ${filePath}`, { encoding: "utf-8" });
+
+    // Define output filename
+    const outFileName = file.replace(/\.ts$/, ".out");
+    const outFilePath = path.join(targetDir, outFileName);
+
+    fs.writeFileSync(outFilePath, output);
+    console.log(`  -> Written to ${outFileName}`);
   } catch (e) {
     console.error(`Error running ${file}:`, e);
     process.exit(1);
