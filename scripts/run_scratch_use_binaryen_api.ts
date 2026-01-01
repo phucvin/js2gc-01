@@ -1,10 +1,12 @@
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from 'url';
 
-const examplesDir = "binary_api_examples";
-// Ensure we are looking at the right directory if run from root
-const targetDir = fs.existsSync(examplesDir) ? examplesDir : ".";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const projectRoot = path.resolve(__dirname, '..');
+const targetDir = path.join(projectRoot, 'scratch', 'use_binaryen_api');
 
 const files = fs.readdirSync(targetDir).filter(f => f.endsWith(".ts") && f !== "run.ts");
 
@@ -21,7 +23,7 @@ files.forEach(file => {
     const outFilePath = path.join(targetDir, outFileName);
 
     fs.writeFileSync(outFilePath, output);
-    console.log(`  -> Written to ${outFileName}`);
+    console.log(`  -> Written to ${outFilePath}`);
   } catch (e) {
     console.error(`Error running ${file}:`, e);
     process.exit(1);

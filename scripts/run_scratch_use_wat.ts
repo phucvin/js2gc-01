@@ -5,16 +5,18 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+const projectRoot = path.resolve(__dirname, '..');
+const scratchDir = path.join(projectRoot, 'scratch', 'use_wat');
 
 async function run() {
-    const files = fs.readdirSync(__dirname);
+    const files = fs.readdirSync(scratchDir);
     const watFiles = files.filter(f => f.endsWith('.wat'));
 
-    console.log(`Found ${watFiles.length} WAT examples:`, watFiles);
+    console.log(`Found ${watFiles.length} WAT examples in ${scratchDir}:`, watFiles);
 
     for (const file of watFiles) {
         console.log(`\n--- Processing ${file} ---`);
-        const filePath = path.join(__dirname, file);
+        const filePath = path.join(scratchDir, file);
         const watText = fs.readFileSync(filePath, 'utf-8');
 
         console.log("Parsing...");
@@ -32,7 +34,7 @@ async function run() {
         module.optimize();
 
         const optimizedWat = module.emitText();
-        const optimizedPath = path.join(__dirname, `${file}.optimized`);
+        const optimizedPath = path.join(scratchDir, `${file}.optimized`);
         fs.writeFileSync(optimizedPath, optimizedWat);
         console.log(`Optimized WAT written to ${optimizedPath}`);
 
@@ -51,7 +53,7 @@ async function run() {
             const result = main();
             console.log(`Execution result: ${result}`);
 
-            const outPath = path.join(__dirname, `${file}.out`);
+            const outPath = path.join(scratchDir, `${file}.out`);
             fs.writeFileSync(outPath, result.toString());
             console.log(`Output written to ${outPath}`);
 

@@ -2,11 +2,11 @@ import binaryen from 'binaryen';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import { compile } from '../src/compiler.js';
+import { compile } from '../src/compiler.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const projectRoot = path.resolve(__dirname, '../../');
+const projectRoot = path.resolve(__dirname, '..');
 const testDataDir = path.join(projectRoot, 'testdata');
 
 async function run() {
