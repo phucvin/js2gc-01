@@ -116,12 +116,24 @@
     )
   )
 
-  (func $main (export "main") (result anyref)
-
-    (return (ref.i31 (i32.const 42)))
-  )
   (func $test (export "test") (result anyref)
+    (local $temp_0 (ref null $Object))
+(local $temp_1 (ref null $Object))
 
-    (call $console_log (call $main))
+    (call $console_log (block (result (ref $Object))
+         (local.set $temp_0 (call $new_object (call $extend_shape (call $extend_shape (call $new_root_shape) (i32.const 0) (i32.const 0)) (i32.const 1) (i32.const 1)) (i32.const 2)))
+         (call $set_storage (ref.as_non_null (local.get $temp_0)) (i32.const 0) (ref.i31 (i32.const 10)))
+(call $set_storage (ref.as_non_null (local.get $temp_0)) (i32.const 1) (ref.i31 (i32.const 20)))
+
+         (ref.as_non_null (local.get $temp_0))
+      ))
+(drop)
+(call $console_log (block (result (ref $Object))
+         (local.set $temp_1 (call $new_object (call $extend_shape (call $extend_shape (call $new_root_shape) (i32.const 2) (i32.const 0)) (i32.const 3) (i32.const 1)) (i32.const 2)))
+         (call $set_storage (ref.as_non_null (local.get $temp_1)) (i32.const 0) (struct.new $BoxedString (string.const "hello")))
+(call $set_storage (ref.as_non_null (local.get $temp_1)) (i32.const 1) (struct.new $BoxedF64 (f64.const 3.14)))
+
+         (ref.as_non_null (local.get $temp_1))
+      ))
   )
 )

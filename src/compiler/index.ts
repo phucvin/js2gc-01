@@ -1,7 +1,9 @@
 import ts from 'typescript';
 import { compileFunction } from './function.ts';
+import { resetPropertyMap } from './context.ts';
 
 export function compile(source: string): string {
+  resetPropertyMap();
   const sourceFile = ts.createSourceFile(
     'temp.js',
     source,
@@ -18,8 +20,10 @@ export function compile(source: string): string {
   });
 
   const mainFunc = functions.find(f => f.name?.text === 'main');
-  if (!mainFunc) {
-    throw new Error('No main function found');
+  const testFunc = functions.find(f => f.name?.text === 'test');
+
+  if (!mainFunc && !testFunc) {
+    throw new Error('No main or test function found');
   }
 
   let wasmFuncs = '';
@@ -29,12 +33,57 @@ export function compile(source: string): string {
   }
 
   return `(module
+  (rec
+    (type $Shape (struct
+      (field $parent (ref null $Shape))
+      (field $key i32)
+      (field $offset i32)
+    ))
+
+    (type $Storage (array (mut anyref)))
+
+    (type $Object (struct
+      (field $shape (mut (ref $Shape)))
+      (field $storage (mut (ref $Storage)))
+    ))
+  )
+
   (type $BoxedF64 (struct (field f64)))
   (type $BoxedI32 (struct (field i32)))
   (type $BoxedString (struct (field (ref string))))
   (import "env" "print_i32" (func $print_i32 (param i32)))
   (import "env" "print_f64" (func $print_f64 (param f64)))
   (import "env" "print_string" (func $print_string (param (ref string))))
+
+  (func $new_root_shape (result (ref $Shape))
+    (struct.new $Shape
+      (ref.null $Shape)
+      (i32.const -1)
+      (i32.const -1)
+    )
+  )
+
+  (func $extend_shape (param $parent (ref $Shape)) (param $key i32) (param $offset i32) (result (ref $Shape))
+    (struct.new $Shape
+      (local.get $parent)
+      (local.get $key)
+      (local.get $offset)
+    )
+  )
+
+  (func $new_object (param $shape (ref $Shape)) (param $size i32) (result (ref $Object))
+    (struct.new $Object
+      (local.get $shape)
+      (array.new_default $Storage (local.get $size))
+    )
+  )
+
+  (func $set_storage (param $obj (ref $Object)) (param $idx i32) (param $val anyref)
+    (array.set $Storage (struct.get $Object $storage (local.get $obj))
+      (local.get $idx)
+      (local.get $val)
+    )
+  )
 
   (func $console_log (param $val anyref) (result anyref)
     (if (ref.is_null (local.get $val))
@@ -60,6 +109,13 @@ export function compile(source: string): string {
                     (if (ref.test (ref $BoxedString) (local.get $val))
                       (then
                         (call $print_string (struct.get $BoxedString 0 (ref.cast (ref $BoxedString) (local.get $val))))
+                      )
+                      (else
+                         (if (ref.test (ref $Object) (local.get $val))
+                           (then
+                             (call $print_string (string.const "[object Object]"))
+                           )
+                         )
                       )
                     )
                   )

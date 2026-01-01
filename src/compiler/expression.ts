@@ -1,6 +1,7 @@
 import ts from 'typescript';
+import { getPropertyId, CompilationContext } from './context.ts';
 
-export function compileExpression(expr: ts.Expression): string {
+export function compileExpression(expr: ts.Expression, ctx: CompilationContext): string {
   if (ts.isNumericLiteral(expr)) {
       const val = Number(expr.text);
       const minI31 = -1073741824;
@@ -17,6 +18,40 @@ export function compileExpression(expr: ts.Expression): string {
       }
   } else if (ts.isStringLiteral(expr)) {
     return `(struct.new $BoxedString (string.const "${expr.text}"))`;
+  } else if (ts.isObjectLiteralExpression(expr)) {
+      // 1. Construct shape
+      // (call $extend_shape (call $extend_shape (call $new_root_shape) key1 0) key2 1)
+      let shapeCode = `(call $new_root_shape)`;
+      let offset = 0;
+      for (const prop of expr.properties) {
+          if (ts.isPropertyAssignment(prop) && prop.name && ts.isIdentifier(prop.name)) {
+              const keyId = getPropertyId(prop.name.text);
+              shapeCode = `(call $extend_shape ${shapeCode} (i32.const ${keyId}) (i32.const ${offset}))`;
+              offset++;
+          }
+      }
+
+      // 2. Create object and store in temp local
+      const objLocal = ctx.getTempLocal('(ref null $Object)');
+
+      // 3. Set properties
+      let setPropsCode = '';
+      offset = 0;
+      for (const prop of expr.properties) {
+          if (ts.isPropertyAssignment(prop) && prop.name && ts.isIdentifier(prop.name)) {
+              const valCode = compileExpression(prop.initializer, ctx);
+              setPropsCode += `(call $set_storage (ref.as_non_null (local.get ${objLocal})) (i32.const ${offset}) ${valCode})\n`;
+              offset++;
+          }
+      }
+
+      // Combine: set local, set props, return local
+      return `(block (result (ref $Object))
+         (local.set ${objLocal} (call $new_object ${shapeCode} (i32.const ${offset})))
+         ${setPropsCode}
+         (ref.as_non_null (local.get ${objLocal}))
+      )`;
+
   } else if (ts.isCallExpression(expr)) {
       if (ts.isIdentifier(expr.expression)) {
           const funcName = expr.expression.text;
@@ -26,7 +61,7 @@ export function compileExpression(expr: ts.Expression): string {
                  expr.expression.expression.text === 'console' &&
                  expr.expression.name.text === 'log') {
           if (expr.arguments.length > 0) {
-              const arg = compileExpression(expr.arguments[0]);
+              const arg = compileExpression(expr.arguments[0], ctx);
               return `(call $console_log ${arg})`;
           } else {
               return `(ref.null any)`;
@@ -34,8 +69,8 @@ export function compileExpression(expr: ts.Expression): string {
       }
   } else if (ts.isBinaryExpression(expr)) {
       if (expr.operatorToken.kind === ts.SyntaxKind.PlusToken) {
-          const left = compileExpression(expr.left);
-          const right = compileExpression(expr.right);
+          const left = compileExpression(expr.left, ctx);
+          const right = compileExpression(expr.right, ctx);
           return `(call $add ${left} ${right})`;
       }
   }
