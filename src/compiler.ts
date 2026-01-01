@@ -1,4 +1,5 @@
 import ts from 'typescript';
+import binaryen from 'binaryen';
 
 export function compile(source: string): string {
   const sourceFile = ts.createSourceFile(
@@ -37,7 +38,7 @@ export function compile(source: string): string {
   )`;
   }
 
-  return `(module
+  const wat = `(module
   (type $BoxedF64 (struct (field f64)))
   (type $BoxedI32 (struct (field i32)))
   (type $BoxedString (struct (field (ref string))))
@@ -63,6 +64,29 @@ export function compile(source: string): string {
   )
 ${wasmFuncs}
 )`;
+
+  const module = binaryen.parseText(wat);
+
+  // Enable GC and other features
+  module.setFeatures(
+    binaryen.Features.GC |
+    binaryen.Features.ReferenceTypes |
+    binaryen.Features.Strings |
+    binaryen.Features.Multivalue // Multivalue is often useful, but not strictly requested. GC implies RefTypes.
+  );
+
+  // Validate to ensure everything is correct before optimization
+  if (!module.validate()) {
+      module.dispose();
+      throw new Error("Module failed validation");
+  }
+
+  module.optimize();
+
+  const optimizedWat = module.emitText();
+  module.dispose();
+
+  return optimizedWat;
 }
 
 function compileBody(body: ts.Block | undefined): string {
