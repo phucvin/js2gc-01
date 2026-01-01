@@ -1,0 +1,11 @@
+--- 06_imported_func.ts ---
+(module
+ (type $0 (func (param i32)))
+ (import "env" "log" (func $log (param i32)))
+ (export "log_value" (func $log_value))
+ (func $log_value (param $0 i32)
+  (call $log
+   (local.get $0)
+  )
+ )
+)
