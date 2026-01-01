@@ -1,0 +1,10 @@
+(module
+ (type $0 (array (mut i32)))
+ (type $1 (func (param i32) (result (ref null $0))))
+ (export "mk_array" (func $mk_array))
+ (func $mk_array (type $1) (param $0 i32) (result (ref null $0))
+  (array.new_default $0
+   (local.get $0)
+  )
+ )
+)

@@ -22,6 +22,5 @@ module.addFunction(
 
 module.addFunctionExport("copy_mem", "copy_mem");
 
-console.log("--- 10_bulk_memory.ts ---");
-console.log(module.emitText());
+process.stdout.write(module.emitText());
 module.dispose();

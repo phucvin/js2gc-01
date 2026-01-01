@@ -40,6 +40,5 @@ module.addFunction(
 
 module.addFunctionExport("factorial", "factorial");
 
-console.log("--- 03_loops.ts ---");
-console.log(module.emitText());
+process.stdout.write(module.emitText());
 module.dispose();

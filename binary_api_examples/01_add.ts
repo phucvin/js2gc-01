@@ -19,6 +19,5 @@ module.addFunction(
 
 module.addFunctionExport("add", "add");
 
-console.log("--- 01_add.ts ---");
-console.log(module.emitText());
+process.stdout.write(module.emitText());
 module.dispose();

@@ -39,6 +39,5 @@ module.addFunction(
 
 module.addFunctionExport("call_indirect", "call_indirect");
 
-console.log("--- 09_table_call.ts ---");
-console.log(module.emitText());
+process.stdout.write(module.emitText());
 module.dispose();

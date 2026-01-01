@@ -22,6 +22,5 @@ module.addFunction(
 
 module.addFunctionExport("log_value", "log_value");
 
-console.log("--- 06_imported_func.ts ---");
-console.log(module.emitText());
+process.stdout.write(module.emitText());
 module.dispose();
