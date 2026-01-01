@@ -59,8 +59,10 @@
 
   (func $main (export "main") (result anyref)
     (struct.new $BoxedF64 (f64.const 1234.56))
+
   )
   (func $test (export "test") (result anyref)
-    (call $console_log (call $main))
+    (drop (call $console_log (call $main)))
+(ref.null any)
   )
 )

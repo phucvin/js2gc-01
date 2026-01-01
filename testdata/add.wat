@@ -59,14 +59,18 @@
 
   (func $a  (result anyref)
     (ref.i31 (i32.const 1))
+
   )
   (func $b  (result anyref)
     (ref.i31 (i32.const 2))
+
   )
   (func $main (export "main") (result anyref)
     (call $add (call $a) (call $b))
+
   )
   (func $test (export "test") (result anyref)
-    (call $console_log (call $main))
+    (drop (call $console_log (call $main)))
+(ref.null any)
   )
 )

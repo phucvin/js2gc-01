@@ -59,8 +59,10 @@
 
   (func $main (export "main") (result anyref)
     (struct.new $BoxedString (string.const "hello world"))
+
   )
   (func $test (export "test") (result anyref)
-    (call $console_log (call $main))
+    (drop (call $console_log (call $main)))
+(ref.null any)
   )
 )

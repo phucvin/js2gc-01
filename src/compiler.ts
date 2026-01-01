@@ -105,34 +105,74 @@ ${wasmFuncs}
 function compileBody(body: ts.Block | undefined): string {
   if (!body) return '(ref.null any)';
 
-  let code = '(ref.null any)'; // Default return if no return statement found
+  // If there are multiple statements, we should probably wrap them in a block?
+  // Wasm functions have an implicit block.
+  // But if we return the last value, we need to make sure previous values are dropped if they leave values on stack.
+  // The current compiler seems to return 'anyref'.
+  // console.log returns 'anyref' (ref.null any).
+  // If we have stmt1; stmt2;
+  // We want to generate: stmt1 drop stmt2
+  // Or just result of stmt2 if it is the return.
+
+  const compiledStatements: string[] = [];
 
   body.statements.forEach(stmt => {
     if (ts.isReturnStatement(stmt) && stmt.expression) {
-        code = compileExpression(stmt.expression);
+        compiledStatements.push(compileExpression(stmt.expression));
     } else if (ts.isExpressionStatement(stmt)) {
-        // Compile expression statements (like console.log)
-        // We wrap them in drop if they return something, but console.log returns ref.null which is fine to drop or keep?
-        // Wait, body of function in this compiler seems to return the LAST expression?
-        // compileBody logic currently: "We scan for the last return statement".
-        // This is weird. The previous code ONLY compiled the return statement.
-        // If I want to support console.log(main()), it is in an ExpressionStatement, not ReturnStatement?
-        // "export function test() { console.log(main()); }"
-        // This is a Block with one ExpressionStatement. No ReturnStatement.
-        // My appended code: "export function test() { console.log(main()); }"
-        // This function has no return.
-        // compileBody currently ignores everything except ReturnStatement.
-        // I need to change compileBody to handle ExpressionStatement.
         const exprCode = compileExpression(stmt.expression);
-        // If we found a return statement, we overwrite 'code' with it.
-        // But if we have expression statements, we should probably sequence them?
-        // For now, the compiler seems very simple.
-        // Let's assume we just want to compile the expression.
-        code = exprCode;
+        // If it's not the last statement, we might need to drop?
+        // But our expressions (console.log) return a value.
+        // We should drop it if we are ignoring it.
+        // For simplicity in this prototype, let's assume we just sequence them.
+        // If we sequence them, the values stack up.
+        // (call $console_log ...) leaves a ref.null on stack.
+        // If we have multiple statements, we need to drop the intermediate ones.
+        compiledStatements.push(`(drop ${exprCode})`);
     }
   });
 
-  return code;
+  if (compiledStatements.length === 0) {
+      return '(ref.null any)';
+  }
+
+  // The last statement shouldn't be dropped if it is intended to be the return value.
+  // But wait, ExpressionStatement implies it is not returned.
+  // Only ReturnStatement is returned.
+  // If the last statement was an ExpressionStatement, we wrapped it in drop.
+  // So the function returns nothing (void).
+  // But the function signature says (result anyref).
+  // So we must return something.
+  // If the last statement was a return, we are good (it pushed a value).
+  // If the last statement was an expression statement, we dropped it. We need to push ref.null.
+
+  // Let's refine:
+  // We need to concat them.
+  // If the last one was a return, it provides the value.
+  // If the last one was NOT a return, we need to provide a default value.
+
+  // However, we don't track here easily which one was return.
+  // Let's re-iterate.
+
+  let instructions = "";
+  let hasReturn = false;
+
+  body.statements.forEach((stmt, index) => {
+    if (ts.isReturnStatement(stmt) && stmt.expression) {
+        instructions += compileExpression(stmt.expression) + "\n";
+        hasReturn = true;
+        // In a real compiler, we would stop here (unreachable code after return).
+    } else if (ts.isExpressionStatement(stmt)) {
+        const exprCode = compileExpression(stmt.expression);
+        instructions += `(drop ${exprCode})\n`;
+    }
+  });
+
+  if (!hasReturn) {
+      instructions += "(ref.null any)";
+  }
+
+  return instructions;
 }
 
 function compileExpression(expr: ts.Expression): string {

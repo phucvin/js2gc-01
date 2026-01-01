@@ -59,8 +59,10 @@
 
   (func $main (export "main") (result anyref)
     (struct.new $BoxedI32 (i32.const 1073741824))
+
   )
   (func $test (export "test") (result anyref)
-    (call $console_log (call $main))
+    (drop (call $console_log (call $main)))
+(ref.null any)
   )
 )

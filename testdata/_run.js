@@ -7,12 +7,14 @@ import { compile } from '../src/compiler.js';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const projectRoot = path.resolve(__dirname, '../../');
-const testDataDir = path.join(projectRoot, 'testdata');
+// We need to find where testdata is. If __dirname is /app/testdata, projectRoot is /app?
+// Let's rely on finding testdata relative to this script.
+const testDataDir = __dirname;
 
 async function run() {
     const files = fs.readdirSync(testDataDir);
     // Exclude run.ts and run.js
-    const jsFiles = files.filter(f => f.endsWith('.js') && f !== 'run.js' && f !== 'run.ts');
+    const jsFiles = files.filter(f => f.endsWith('.js') && f !== '_run.js' && f !== 'run.ts');
 
     console.log(`Found ${jsFiles.length} JS examples in ${testDataDir}:`, jsFiles);
 
@@ -49,20 +51,20 @@ async function run() {
         module.dispose();
 
         try {
-            const compiled = await WebAssembly.compile(binary as any);
+            const compiled = await WebAssembly.compile(binary);
 
             let output = "";
             const imports = {
                 env: {
-                    print_i32: (val: number) => { output += val + "\n"; },
-                    print_f64: (val: number) => { output += val + "\n"; },
-                    print_string: (val: string) => { output += val + "\n"; },
+                    print_i32: (val) => { output += val + "\n"; },
+                    print_f64: (val) => { output += val + "\n"; },
+                    print_string: (val) => { output += val + "\n"; },
                 }
             };
 
             const instance = await WebAssembly.instantiate(compiled, imports);
 
-            const test = instance.exports.test as () => void;
+            const test = instance.exports.test;
             if (typeof test !== 'function') {
                 console.error(`Example ${file} does not export a 'test' function.`);
                 continue;

@@ -39,10 +39,10 @@ async function run() {
         const binary = module.emitBinary();
 
         try {
-            const compiled = await WebAssembly.compile(binary as any);
+            const compiled = await WebAssembly.compile(binary);
             const instance = await WebAssembly.instantiate(compiled, {});
 
-            const main = instance.exports.main as () => number;
+            const main = instance.exports.main;
             if (typeof main !== 'function') {
                 console.error(`Example ${file} does not export a 'main' function.`);
                 continue;

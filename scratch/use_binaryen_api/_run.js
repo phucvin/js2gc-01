@@ -1,12 +1,14 @@
 import { execSync } from "child_process";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from 'url';
 
-const examplesDir = "binary_api_examples";
-// Ensure we are looking at the right directory if run from root
-const targetDir = fs.existsSync(examplesDir) ? examplesDir : ".";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-const files = fs.readdirSync(targetDir).filter(f => f.endsWith(".ts") && f !== "run.ts");
+const targetDir = __dirname;
+
+const files = fs.readdirSync(targetDir).filter(f => f.endsWith(".ts") && f !== "run.ts" && f !== "_run.js");
 
 console.log(`Found ${files.length} examples in ${targetDir}.`);
 
@@ -14,6 +16,7 @@ files.forEach(file => {
   console.log(`Running ${file}...`);
   try {
     const filePath = path.join(targetDir, file);
+    // Use npx ts-node to run the TS examples
     const output = execSync(`npx ts-node ${filePath}`, { encoding: "utf-8" });
 
     // Define output filename
