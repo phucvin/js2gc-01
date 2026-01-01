@@ -21,6 +21,5 @@ module.addFunction(
 
 module.addFunctionExport("test_break", "test_break");
 
-console.log("--- 08_block_break.ts ---");
-console.log(module.emitText());
+process.stdout.write(module.emitText());
 module.dispose();

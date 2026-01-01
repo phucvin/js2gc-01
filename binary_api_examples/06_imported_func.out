@@ -1,4 +1,3 @@
---- 06_imported_func.ts ---
 (module
  (type $0 (func (param i32)))
  (import "env" "log" (func $log (param i32)))

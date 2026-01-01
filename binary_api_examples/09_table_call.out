@@ -1,4 +1,3 @@
---- 09_table_call.ts ---
 (module
  (type $0 (func (result i32)))
  (type $1 (func (param i32) (result i32)))

@@ -22,7 +22,6 @@ To run the tests:
     ```bash
     rm -rf dist && \
     npx tsc src/compiler.ts testdata/run.ts --target es2022 --module nodenext --moduleResolution nodenext --outDir dist && \
-    cp testdata/*.js dist/testdata/ && \
     node --experimental-wasm-stringref dist/testdata/run.js
     ```
 
@@ -31,4 +30,4 @@ To run the tests:
     -   Compile each file to WAT.
     -   Use `binaryen` to convert WAT to Wasm binary.
     -   Execute the Wasm binary.
-    -   Write the output to `.out` files.
+    -   Write the output to `.out` files in `testdata/`.

@@ -20,6 +20,5 @@ module.addFunction(
 
 module.addFunctionExport("is_even", "is_even");
 
-console.log("--- 02_if_else.ts ---");
-console.log(module.emitText());
+process.stdout.write(module.emitText());
 module.dispose();

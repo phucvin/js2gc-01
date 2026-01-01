@@ -1,0 +1,9 @@
+(module
+ (type $0 (func (param anyref) (result i31ref)))
+ (export "test_cast" (func $test_cast))
+ (func $test_cast (type $0) (param $0 anyref) (result i31ref)
+  (ref.cast i31ref
+   (local.get $0)
+  )
+ )
+)
