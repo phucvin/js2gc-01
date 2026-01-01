@@ -8,7 +8,7 @@ const __dirname = path.dirname(__filename);
 
 async function run() {
     const files = fs.readdirSync(__dirname);
-    const watFiles = files.filter(f => f.endsWith('.wat') && !f.endsWith('.optimized.wat'));
+    const watFiles = files.filter(f => f.endsWith('.wat'));
 
     console.log(`Found ${watFiles.length} WAT examples:`, watFiles);
 
@@ -32,7 +32,7 @@ async function run() {
         module.optimize();
 
         const optimizedWat = module.emitText();
-        const optimizedPath = path.join(__dirname, `${file}.optimized.wat`);
+        const optimizedPath = path.join(__dirname, `${file}.optimized`);
         fs.writeFileSync(optimizedPath, optimizedWat);
         console.log(`Optimized WAT written to ${optimizedPath}`);
 
