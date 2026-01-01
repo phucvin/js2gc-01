@@ -30,6 +30,5 @@ module.addFunction(
 
 module.addFunctionExport("increment", "increment");
 
-console.log("--- 07_global_var.ts ---");
-console.log(module.emitText());
+process.stdout.write(module.emitText());
 module.dispose();

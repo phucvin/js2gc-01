@@ -1,0 +1,9 @@
+(module
+ (type $0 (func (param stringref) (result i32)))
+ (export "str_len" (func $str_len))
+ (func $str_len (type $0) (param $s stringref) (result i32)
+  (string.measure_utf8
+   (local.get $s)
+  )
+ )
+)

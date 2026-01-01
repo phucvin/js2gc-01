@@ -25,6 +25,5 @@ module.addFunction(
 
 module.addFunctionExport("sum_of_squares", "sum_of_squares");
 
-console.log("--- 05_function_call.ts ---");
-console.log(module.emitText());
+process.stdout.write(module.emitText());
 module.dispose();

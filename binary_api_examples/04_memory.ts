@@ -26,6 +26,5 @@ module.addFunction(
 
 module.addFunctionExport("store_and_load", "store_and_load");
 
-console.log("--- 04_memory.ts ---");
-console.log(module.emitText());
+process.stdout.write(module.emitText());
 module.dispose();

@@ -1,0 +1,11 @@
+(module
+ (type $0 (func (param i32) (result i32)))
+ (export "test_i31" (func $test_i31))
+ (func $test_i31 (type $0) (param $val i32) (result i32)
+  (i31.get_s
+   (ref.i31
+    (local.get $val)
+   )
+  )
+ )
+)
