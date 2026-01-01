@@ -5,8 +5,8 @@ This directory contains WebAssembly Text Format (WAT) examples demonstrating var
 ## Structure
 
 *   `*.wat`: The source WAT files.
-*   `run.ts`: A script that:
-    1.  Scans for all `.wat` files.
+*   `scripts/run_scratch_use_wat.ts`: A script that:
+    1.  Scans for all `.wat` files in this directory.
     2.  Parses and validates them using Binaryen.
     3.  Optimizes the modules.
     4.  Writes the optimized WAT to `*.wat.optimized`.
@@ -17,8 +17,8 @@ This directory contains WebAssembly Text Format (WAT) examples demonstrating var
 
 Ensure you have dependencies installed (e.g., `npm install`).
 
-Run the script:
+Run the script from the repository root:
 
 ```bash
-npx ts-node-esm scratch/use_wat/run.ts
+node --experimental-wasm-stringref node_modules/ts-node/dist/bin.js scripts/run_scratch_use_wat.ts
 ```

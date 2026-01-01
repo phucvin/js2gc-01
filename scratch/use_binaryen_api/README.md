@@ -11,7 +11,7 @@ This directory contains TypeScript examples demonstrating how to use the `binary
 ## Directory Structure
 
 - `*.ts`: Individual example files showing different Wasm features.
-- `run.ts`: Automation script to execute all examples.
+- `scripts/run_scratch_use_binaryen_api.ts`: Automation script to execute all examples.
 - `*.out`: Generated output files (WebAssembly Text format) from the examples.
 
 ## How to Run
@@ -19,7 +19,7 @@ This directory contains TypeScript examples demonstrating how to use the `binary
 To run all examples and generate the `.out` files, execute the following command from the repository root:
 
 ```bash
-npx ts-node scratch/use_binaryen_api/run.ts
+npx ts-node scripts/run_scratch_use_binaryen_api.ts
 ```
 
 This script will:
