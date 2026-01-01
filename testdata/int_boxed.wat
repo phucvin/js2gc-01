@@ -4,6 +4,6 @@
   (type $BoxedString (struct (field (ref string))))
 
   (func $main (export "main") (result anyref)
-    (struct.new $BoxedString (string.const "hello world"))
+    (struct.new $BoxedI32 (i32.const 1073741824))
   )
 )
