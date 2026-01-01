@@ -1,7 +1,55 @@
 (module
- (type $0 (func (result i32)))
+ (rec
+  (type $FuncSig (func (param (ref $Env) i32) (result i32)))
+  (type $Env (struct (field $captured_val (mut i32))))
+  (type $Closure (struct (field $code (ref $FuncSig)) (field $env (ref $Env))))
+ )
+ (type $3 (func (param i32) (result (ref $Closure))))
+ (type $4 (func (param (ref $Closure) i32) (result i32)))
+ (type $5 (func (result i32)))
+ (elem declare func $closure_code)
  (export "main" (func $main))
- (func $main (type $0) (result i32)
-  (i32.const 15)
+ (func $closure_code (type $FuncSig) (param $env (ref $Env)) (param $arg i32) (result i32)
+  (i32.add
+   (local.get $arg)
+   (struct.get $Env $captured_val
+    (local.get $env)
+   )
+  )
+ )
+ (func $make_closure (type $3) (param $val i32) (result (ref $Closure))
+  (local $env (ref $Env))
+  (local.set $env
+   (struct.new $Env
+    (local.get $val)
+   )
+  )
+  (struct.new $Closure
+   (ref.func $closure_code)
+   (local.get $env)
+  )
+ )
+ (func $call_closure (type $4) (param $clos (ref $Closure)) (param $arg i32) (result i32)
+  (call_ref $FuncSig
+   (struct.get $Closure $env
+    (local.get $clos)
+   )
+   (local.get $arg)
+   (struct.get $Closure $code
+    (local.get $clos)
+   )
+  )
+ )
+ (func $main (type $5) (result i32)
+  (local $my_closure (ref $Closure))
+  (local.set $my_closure
+   (call $make_closure
+    (i32.const 10)
+   )
+  )
+  (call $call_closure
+   (local.get $my_closure)
+   (i32.const 5)
+  )
  )
 )

@@ -1,7 +1,28 @@
 (module
- (type $0 (func (result i32)))
+ (type $Box (struct (field (mut anyref))))
+ (type $1 (func (param i32) (result (ref $Box))))
+ (type $2 (func (result i32)))
  (export "main" (func $main))
- (func $main (type $0) (result i32)
-  (i32.const 123)
+ (func $box_i31 (type $1) (param $val i32) (result (ref $Box))
+  (struct.new $Box
+   (ref.i31
+    (local.get $val)
+   )
+  )
+ )
+ (func $main (type $2) (result i32)
+  (local $b (ref $Box))
+  (local.set $b
+   (call $box_i31
+    (i32.const 123)
+   )
+  )
+  (i31.get_u
+   (ref.cast i31ref
+    (struct.get $Box 0
+     (local.get $b)
+    )
+   )
+  )
  )
 )

@@ -29,7 +29,7 @@ async function run() {
         }
 
         console.log("Optimizing...");
-        module.optimize();
+        // module.optimize();
 
         const optimizedWat = module.emitText();
         const optimizedPath = path.join(__dirname, `${file}.optimized`);
