@@ -50,32 +50,35 @@ async function run() {
 
         try {
             const compiled = await WebAssembly.compile(binary as any);
-            const instance = await WebAssembly.instantiate(compiled, {});
 
-            const main = instance.exports.main as () => any;
-            if (typeof main !== 'function') {
-                console.error(`Example ${file} does not export a 'main' function.`);
+            let output = "";
+            const imports = {
+                env: {
+                    print_i32: (val: number) => { output += val + "\n"; },
+                    print_f64: (val: number) => { output += val + "\n"; },
+                    print_string: (val: string) => { output += val + "\n"; },
+                }
+            };
+
+            const instance = await WebAssembly.instantiate(compiled, imports);
+
+            const test = instance.exports.test as () => void;
+            if (typeof test !== 'function') {
+                console.error(`Example ${file} does not export a 'test' function.`);
                 continue;
             }
 
-            const result = main();
+            test();
 
-            let outputStr = "";
-            try {
-                // Try to convert to string, but handle objects that might fail toString()
-                if (typeof result === 'object' && result !== null) {
-                     outputStr = `[Object ${result.constructor.name}]`;
-                } else {
-                     outputStr = String(result);
-                }
-            } catch (e) {
-                outputStr = "[Unprintable Object]";
-            }
+            // Trim trailing newline if needed, or keep it. JS console.log adds newline.
+            // My print helpers add newline in this variable accumulation.
+            // Let's remove the last newline to match typical file output expectations if convenient,
+            // but usually `*.out` files have a trailing newline.
 
-            console.log(`Execution result:`, result); // console.log handles objects better
+            console.log(`Execution output:\n${output}`);
 
             const outPath = path.join(testDataDir, `${file.replace('.js', '.out')}`);
-            fs.writeFileSync(outPath, outputStr);
+            fs.writeFileSync(outPath, output);
             console.log(`Output written to ${outPath}`);
 
         } catch (e) {
