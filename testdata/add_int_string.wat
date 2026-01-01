@@ -64,11 +64,8 @@
     )
   )
 
-  (func $other  (result anyref)
-    (ref.i31 (i32.const 42))
-  )
   (func $main (export "main") (result anyref)
-    (call $other)
+    (call $add (ref.i31 (i32.const 10)) (struct.new $BoxedString (string.const "hello")))
   )
   (func $test (export "test") (result anyref)
     (call $console_log (call $main))
