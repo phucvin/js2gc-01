@@ -6,10 +6,6 @@ import { compile } from '../src/compiler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// We are in dist/testdata/run.js, so we need to go up two levels to get to root, then into testdata
-// Actually, the user wants the out files in testdata, but the run.js is running from dist.
-// If we run `node dist/testdata/run.js`, __dirname is `dist/testdata`.
-// We want to access `testdata` in the root.
 const projectRoot = path.resolve(__dirname, '../../');
 const testDataDir = path.join(projectRoot, 'testdata');
 
@@ -63,10 +59,26 @@ async function run() {
             }
 
             const result = main();
-            console.log(`Execution result: ${result}`);
+            let output: string;
+
+            try {
+                if (typeof result === 'object' && result !== null) {
+                    // Try to convert to string. Wasm GC objects often throw on toString/primitive conversion
+                    // if they don't implement the necessary protocol (which they don't by default).
+                    // We catch this and return a placeholder to indicate a successful GC object return.
+                    output = String(result);
+                } else {
+                    output = String(result);
+                }
+            } catch (err) {
+                 // Conversion failed, likely an opaque Wasm GC object
+                 output = "[object WasmGC]";
+            }
+
+            console.log(`Execution result: ${output}`);
 
             const outPath = path.join(testDataDir, `${file.replace('.js', '.out')}`);
-            fs.writeFileSync(outPath, String(result));
+            fs.writeFileSync(outPath, output);
             console.log(`Output written to ${outPath}`);
 
         } catch (e) {

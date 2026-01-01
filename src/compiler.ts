@@ -29,10 +29,10 @@ export function compile(source: string): string {
       if (ts.isReturnStatement(stmt) && stmt.expression) {
         if (ts.isNumericLiteral(stmt.expression)) {
           returnType = 'f64';
-          body = `(f64.const ${stmt.expression.text})`;
+          body = `(struct.new $BoxedNumber (f64.const ${stmt.expression.text}))`;
         } else if (ts.isStringLiteral(stmt.expression)) {
           returnType = '(ref string)';
-          body = `(string.const "${stmt.expression.text}")`;
+          body = `(struct.new $BoxedString (string.const "${stmt.expression.text}"))`;
         }
       }
     });
@@ -43,7 +43,9 @@ export function compile(source: string): string {
   }
 
   return `(module
-  (func $main (export "main") (result ${returnType})
+  (type $BoxedNumber (struct (field f64)))
+  (type $BoxedString (struct (field (ref string))))
+  (func $main (export "main") (result anyref)
     ${body}
   )
 )`;
