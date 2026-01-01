@@ -20,5 +20,5 @@ Ensure you have dependencies installed (e.g., `npm install`).
 Run the script:
 
 ```bash
-npx ts-node-esm wat_examples/run.ts
+npx ts-node-esm scratch/use_wat/run.ts
 ```
