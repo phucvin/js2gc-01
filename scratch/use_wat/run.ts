@@ -39,7 +39,7 @@ async function run() {
         const binary = module.emitBinary();
 
         try {
-            const compiled = await WebAssembly.compile(binary);
+            const compiled = await WebAssembly.compile(binary as any);
             const instance = await WebAssembly.instantiate(compiled, {});
 
             const main = instance.exports.main as () => number;
