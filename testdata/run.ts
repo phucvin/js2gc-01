@@ -6,10 +6,6 @@ import { compile } from '../src/compiler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-// We are in dist/testdata/run.js, so we need to go up two levels to get to root, then into testdata
-// Actually, the user wants the out files in testdata, but the run.js is running from dist.
-// If we run `node dist/testdata/run.js`, __dirname is `dist/testdata`.
-// We want to access `testdata` in the root.
 const projectRoot = path.resolve(__dirname, '../../');
 const testDataDir = path.join(projectRoot, 'testdata');
 
@@ -63,10 +59,23 @@ async function run() {
             }
 
             const result = main();
-            console.log(`Execution result: ${result}`);
+
+            let outputStr = "";
+            try {
+                // Try to convert to string, but handle objects that might fail toString()
+                if (typeof result === 'object' && result !== null) {
+                     outputStr = `[Object ${result.constructor.name}]`;
+                } else {
+                     outputStr = String(result);
+                }
+            } catch (e) {
+                outputStr = "[Unprintable Object]";
+            }
+
+            console.log(`Execution result:`, result); // console.log handles objects better
 
             const outPath = path.join(testDataDir, `${file.replace('.js', '.out')}`);
-            fs.writeFileSync(outPath, String(result));
+            fs.writeFileSync(outPath, outputStr);
             console.log(`Output written to ${outPath}`);
 
         } catch (e) {
