@@ -1,39 +1,100 @@
 (module
-  ;; A generic wrapper struct that holds an anyref.
-  (type $Box (struct (field (mut anyref))))
+  ;; VTable for dynamic dispatch
+  ;; We need a recursive definition because Shape refers to VTable and VTable refers to Shape (in the signature)
+  (rec
+    (type $VTable (struct
+      (field $get_area (ref $get_area_sig))
+    ))
 
-  ;; Function to wrap an i31 (unboxed scalar) into a Box
-  (func $box_i31 (param $val i32) (result (ref $Box))
-    (struct.new $Box
-      (ref.i31 (local.get $val))
+    (type $get_area_sig (func (param (ref $Shape)) (result i32)))
+
+    (type $Shape (sub (struct
+      (field $vtable (ref $VTable))
+    )))
+  )
+
+  ;; Concrete types
+  (type $Rect (sub $Shape (struct
+    (field $vtable (ref $VTable))
+    (field $w i32)
+    (field $h i32)
+  )))
+
+  (type $Circle (sub $Shape (struct
+    (field $vtable (ref $VTable))
+    (field $r i32)
+  )))
+
+  ;; Implementations
+  ;; Explicitly declare they use $get_area_sig type
+  (func $Rect_get_area (type $get_area_sig) (param $this (ref $Shape)) (result i32)
+    (local $self (ref $Rect))
+    (local.set $self (ref.cast (ref $Rect) (local.get $this)))
+    (i32.mul
+      (struct.get $Rect 1 (local.get $self))
+      (struct.get $Rect 2 (local.get $self))
+    )
+  )
+
+  (func $Circle_get_area (type $get_area_sig) (param $this (ref $Shape)) (result i32)
+    (local $self (ref $Circle))
+    (local.set $self (ref.cast (ref $Circle) (local.get $this)))
+    ;; Area = 3 * r * r (approx PI = 3)
+    (i32.mul
+      (i32.const 3)
+      (i32.mul
+        (struct.get $Circle 1 (local.get $self))
+        (struct.get $Circle 1 (local.get $self))
+      )
+    )
+  )
+
+  ;; Declare functions to be used in ref.func
+  (elem declare func $Rect_get_area $Circle_get_area)
+
+  ;; VTables
+  (global $RectVTable (ref $VTable) (struct.new $VTable (ref.func $Rect_get_area)))
+  (global $CircleVTable (ref $VTable) (struct.new $VTable (ref.func $Circle_get_area)))
+
+  ;; Helper to call get_area on a Shape
+  (func $call_area (param $s (ref $Shape)) (result i32)
+    (call_ref $get_area_sig
+      (local.get $s)
+      (struct.get $VTable 0 (struct.get $Shape 0 (local.get $s)))
     )
   )
 
   (func $main (result i32)
-    (local $b (ref $Box))
-    (local.set $b (call $box_i31 (i32.const 123)))
+    (local $r (ref $Rect))
+    (local $c (ref $Circle))
+    (local $sum i32)
 
-    ;; We have a Box with anyref inside. We know it's an i31.
-    ;; We want to get it out.
-    ;; struct.get returns anyref.
-    ;; We cast it to i31ref.
-    ;; Note: 'i31' is the heap type, so we cast to a reference to that heap type.
-    ;; Binaryen syntax for casting to i31ref might be `ref.cast (ref i31)` or just `ref.cast_i31`?
-    ;; Or maybe `ref.cast null i31`?
-    ;; Let's try to infer from common issues. `ref.cast` expects a reference type.
-    ;; `(ref i31)` is a valid reference type in recent Wasm.
-    ;; Let's try `(ref.cast (ref i31) ...)` again but maybe I had a syntax error?
-    ;; The error was `16:16: error: expected reftype`.
-    ;; Line 16 was `(ref.cast (ref i31)`.
-    ;; Maybe `i31` is not recognized as a heap type keyword inside `ref` in this parser version?
-    ;; `i31ref` is the value type.
-    ;; `(ref.cast i31ref ...)` ?
-
-    (i31.get_u
-      (ref.cast i31ref
-        (struct.get $Box 0 (local.get $b))
+    ;; Create Rect 10x20
+    (local.set $r
+      (struct.new $Rect
+        (global.get $RectVTable)
+        (i32.const 10)
+        (i32.const 20)
       )
     )
+
+    ;; Create Circle radius 5
+    (local.set $c
+      (struct.new $Circle
+        (global.get $CircleVTable)
+        (i32.const 5)
+      )
+    )
+
+    ;; Sum areas: (10*20) + (3*5*5) = 200 + 75 = 275
+    (local.set $sum
+      (i32.add
+        (call $call_area (local.get $r))
+        (call $call_area (local.get $c))
+      )
+    )
+
+    (local.get $sum)
   )
 
   (export "main" (func $main))
