@@ -5,3 +5,5 @@ function other() {
 function main() {
   return other();
 }
+
+export function test() { console.log(main()); }

@@ -26,7 +26,10 @@ export function compile(source: string): string {
   for (const func of functions) {
     const name = func.name!.text;
     const isMain = name === 'main';
-    const exportClause = isMain ? '(export "main")' : '';
+    const isTest = name === 'test';
+    let exportClause = '';
+    if (isMain) exportClause = '(export "main")';
+    if (isTest) exportClause = '(export "test")';
 
     // Compile body
     const body = compileBody(func.body);
@@ -41,6 +44,40 @@ export function compile(source: string): string {
   (type $BoxedF64 (struct (field f64)))
   (type $BoxedI32 (struct (field i32)))
   (type $BoxedString (struct (field (ref string))))
+  (import "env" "print_i32" (func $print_i32 (param i32)))
+  (import "env" "print_f64" (func $print_f64 (param f64)))
+  (import "env" "print_string" (func $print_string (param (ref string))))
+
+  (func $console_log (param $val anyref) (result anyref)
+    (if (ref.test i31ref (local.get $val))
+      (then
+        (call $print_i32 (i31.get_s (ref.cast i31ref (local.get $val))))
+      )
+      (else
+        (if (ref.test (ref $BoxedI32) (local.get $val))
+          (then
+            (call $print_i32 (struct.get $BoxedI32 0 (ref.cast (ref $BoxedI32) (local.get $val))))
+          )
+          (else
+            (if (ref.test (ref $BoxedF64) (local.get $val))
+              (then
+                (call $print_f64 (struct.get $BoxedF64 0 (ref.cast (ref $BoxedF64) (local.get $val))))
+              )
+              (else
+                (if (ref.test (ref $BoxedString) (local.get $val))
+                  (then
+                    (call $print_string (struct.get $BoxedString 0 (ref.cast (ref $BoxedString) (local.get $val))))
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+    )
+    (ref.null any)
+  )
+
   (func $add (param $lhs anyref) (param $rhs anyref) (result anyref)
     (if (result anyref) (ref.test i31ref (local.get $lhs))
       (then
@@ -70,10 +107,28 @@ function compileBody(body: ts.Block | undefined): string {
 
   let code = '(ref.null any)'; // Default return if no return statement found
 
-  // We scan for the last return statement
   body.statements.forEach(stmt => {
     if (ts.isReturnStatement(stmt) && stmt.expression) {
         code = compileExpression(stmt.expression);
+    } else if (ts.isExpressionStatement(stmt)) {
+        // Compile expression statements (like console.log)
+        // We wrap them in drop if they return something, but console.log returns ref.null which is fine to drop or keep?
+        // Wait, body of function in this compiler seems to return the LAST expression?
+        // compileBody logic currently: "We scan for the last return statement".
+        // This is weird. The previous code ONLY compiled the return statement.
+        // If I want to support console.log(main()), it is in an ExpressionStatement, not ReturnStatement?
+        // "export function test() { console.log(main()); }"
+        // This is a Block with one ExpressionStatement. No ReturnStatement.
+        // My appended code: "export function test() { console.log(main()); }"
+        // This function has no return.
+        // compileBody currently ignores everything except ReturnStatement.
+        // I need to change compileBody to handle ExpressionStatement.
+        const exprCode = compileExpression(stmt.expression);
+        // If we found a return statement, we overwrite 'code' with it.
+        // But if we have expression statements, we should probably sequence them?
+        // For now, the compiler seems very simple.
+        // Let's assume we just want to compile the expression.
+        code = exprCode;
     }
   });
 
@@ -111,6 +166,16 @@ function compileExpression(expr: ts.Expression): string {
       if (ts.isIdentifier(expr.expression)) {
           const funcName = expr.expression.text;
           return `(call $${funcName})`;
+      } else if (ts.isPropertyAccessExpression(expr.expression) &&
+                 ts.isIdentifier(expr.expression.expression) &&
+                 expr.expression.expression.text === 'console' &&
+                 expr.expression.name.text === 'log') {
+          if (expr.arguments.length > 0) {
+              const arg = compileExpression(expr.arguments[0]);
+              return `(call $console_log ${arg})`;
+          } else {
+              return `(ref.null any)`;
+          }
       }
   } else if (ts.isBinaryExpression(expr)) {
       if (expr.operatorToken.kind === ts.SyntaxKind.PlusToken) {

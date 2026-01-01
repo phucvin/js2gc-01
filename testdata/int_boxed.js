@@ -3,3 +3,5 @@ export function main() {
   // Signed 31-bit range: [-1073741824, 1073741823].
   // So 1073741824 is just outside, should be BoxedI32.
 }
+
+export function test() { console.log(main()); }
