@@ -20,9 +20,7 @@ To run the tests:
 1.  Compile the TypeScript files and run the test runner:
 
     ```bash
-    rm -rf dist && \
-    npx tsc src/compiler.ts testdata/run.ts --target es2022 --module nodenext --moduleResolution nodenext --outDir dist && \
-    node --experimental-wasm-stringref dist/testdata/run.js
+    node --experimental-wasm-stringref node_modules/ts-node/dist/bin.js scripts/run_testdata.ts
     ```
 
     The runner will:
