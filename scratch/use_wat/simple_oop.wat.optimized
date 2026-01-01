@@ -1,0 +1,193 @@
+(module
+ (rec
+  (type $Object (struct (field $props (mut (ref null $Entry)))))
+  (type $Entry (struct (field $key stringref) (field $val (mut anyref)) (field $next (mut (ref null $Entry)))))
+  (type $MethodSig (func (param (ref $Object)) (result anyref)))
+  (type $Method (struct (field $func (ref $MethodSig))))
+ )
+ (type $4 (func (result i32)))
+ (type $5 (func (param (ref $Object) (ref string)) (result (ref null $Entry))))
+ (type $6 (func (param (ref $Object) (ref string) (ref eq))))
+ (type $7 (func (param (ref $Object) (ref string)) (result anyref)))
+ (global $"string.const_\"get_x\"" (ref string) (string.const "get_x"))
+ (global $"string.const_\"sum\"" (ref string) (string.const "sum"))
+ (global $"string.const_\"x\"" (ref string) (string.const "x"))
+ (global $"string.const_\"y\"" (ref string) (string.const "y"))
+ (elem declare func $get_x $sum_x_y)
+ (export "main" (func $main))
+ (func $find_entry (type $5) (param $0 (ref $Object)) (param $1 (ref string)) (result (ref null $Entry))
+  (local $2 (ref null $Entry))
+  (local.set $2
+   (struct.get $Object $props
+    (local.get $0)
+   )
+  )
+  (loop $search (result (ref null $Entry))
+   (if
+    (ref.is_null
+     (local.get $2)
+    )
+    (then
+     (return
+      (ref.null none)
+     )
+    )
+   )
+   (if (result (ref null $Entry))
+    (string.eq
+     (struct.get $Entry $key
+      (local.get $2)
+     )
+     (local.get $1)
+    )
+    (then
+     (local.get $2)
+    )
+    (else
+     (local.set $2
+      (struct.get $Entry $next
+       (local.get $2)
+      )
+     )
+     (br $search)
+    )
+   )
+  )
+ )
+ (func $set_field (type $6) (param $0 (ref $Object)) (param $1 (ref string)) (param $2 (ref eq))
+  (local $3 (ref null $Entry))
+  (if
+   (ref.is_null
+    (local.tee $3
+     (call $find_entry
+      (local.get $0)
+      (local.get $1)
+     )
+    )
+   )
+   (then
+    (struct.set $Object $props
+     (local.get $0)
+     (struct.new $Entry
+      (local.get $1)
+      (local.get $2)
+      (struct.get $Object $props
+       (local.get $0)
+      )
+     )
+    )
+   )
+   (else
+    (struct.set $Entry $val
+     (local.get $3)
+     (local.get $2)
+    )
+   )
+  )
+ )
+ (func $get_field (type $7) (param $0 (ref $Object)) (param $1 (ref string)) (result anyref)
+  (local $2 (ref null $Entry))
+  (if
+   (ref.is_null
+    (local.tee $2
+     (call $find_entry
+      (local.get $0)
+      (local.get $1)
+     )
+    )
+   )
+   (then
+    (return
+     (ref.null none)
+    )
+   )
+  )
+  (struct.get $Entry $val
+   (local.get $2)
+  )
+ )
+ (func $get_x (type $MethodSig) (param $0 (ref $Object)) (result anyref)
+  (call $get_field
+   (local.get $0)
+   (global.get $"string.const_\"x\"")
+  )
+ )
+ (func $sum_x_y (type $MethodSig) (param $0 (ref $Object)) (result anyref)
+  (local $1 anyref)
+  (local $2 anyref)
+  (local.set $1
+   (call $get_field
+    (local.get $0)
+    (global.get $"string.const_\"x\"")
+   )
+  )
+  (local.set $2
+   (call $get_field
+    (local.get $0)
+    (global.get $"string.const_\"y\"")
+   )
+  )
+  (ref.i31
+   (i32.add
+    (i31.get_s
+     (ref.cast i31ref
+      (local.get $1)
+     )
+    )
+    (i31.get_s
+     (ref.cast i31ref
+      (local.get $2)
+     )
+    )
+   )
+  )
+ )
+ (func $main (type $4) (result i32)
+  (local $0 (ref (exact $Object)))
+  (call $set_field
+   (local.tee $0
+    (struct.new_default $Object)
+   )
+   (global.get $"string.const_\"x\"")
+   (ref.i31
+    (i32.const 10)
+   )
+  )
+  (call $set_field
+   (local.get $0)
+   (global.get $"string.const_\"y\"")
+   (ref.i31
+    (i32.const 20)
+   )
+  )
+  (call $set_field
+   (local.get $0)
+   (global.get $"string.const_\"get_x\"")
+   (struct.new $Method
+    (ref.func $get_x)
+   )
+  )
+  (call $set_field
+   (local.get $0)
+   (global.get $"string.const_\"sum\"")
+   (struct.new $Method
+    (ref.func $sum_x_y)
+   )
+  )
+  (i31.get_s
+   (ref.cast i31ref
+    (call_ref $MethodSig
+     (local.get $0)
+     (struct.get $Method $func
+      (ref.cast (ref $Method)
+       (call $get_field
+        (local.get $0)
+        (global.get $"string.const_\"sum\"")
+       )
+      )
+     )
+    )
+   )
+  )
+ )
+)
