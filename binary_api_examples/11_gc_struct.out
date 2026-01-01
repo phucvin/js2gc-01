@@ -1,9 +1,9 @@
 (module
- (type $struct_t (struct (field (mut i32)) (field (mut i32))))
- (type $1 (func (result (ref $struct_t))))
+ (type $0 (struct (field (mut i32)) (field (mut i32))))
+ (type $1 (func (result (ref null $0))))
  (export "mk_struct" (func $mk_struct))
- (func $mk_struct (type $1) (result (ref $struct_t))
-  (struct.new $struct_t
+ (func $mk_struct (type $1) (result (ref null $0))
+  (struct.new $0
    (i32.const 10)
    (i32.const 20)
   )

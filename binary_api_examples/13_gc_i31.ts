@@ -1,20 +1,22 @@
 import binaryen from "binaryen";
 
-// GC i31 example
-const wat = `
-(module
-  (func $test_i31 (param $val i32) (result i32)
-    (i31.get_s
-      (ref.i31 (local.get $val))
+const module = new binaryen.Module();
+module.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes);
+
+// Function: test_i31(val: i32) -> i32
+module.addFunction(
+  "test_i31",
+  binaryen.createType([binaryen.i32]),
+  binaryen.i32,
+  [],
+  module.i31.get_s(
+    module.ref.i31(
+      module.local.get(0, binaryen.i32)
     )
   )
+);
 
-  (export "test_i31" (func $test_i31))
-)
-`;
-
-const module = binaryen.parseText(wat);
-module.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes);
+module.addFunctionExport("test_i31", "test_i31");
 
 if (!module.validate()) {
     throw new Error("Invalid module");
