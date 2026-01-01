@@ -17,5 +17,10 @@
   "bugs": {
     "url": "https://github.com/phucvin/js2gc-01/issues"
   },
-  "homepage": "https://github.com/phucvin/js2gc-01#readme"
+  "homepage": "https://github.com/phucvin/js2gc-01#readme",
+  "dependencies": {
+    "binaryen": "^125.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3"
+  }
 }
