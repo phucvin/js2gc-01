@@ -29,6 +29,20 @@ export function compileStatement(stmt: ts.Statement, ctx: CompilationContext): s
         // If we return (local.set ...), it consumes the value.
         // So we should append (ref.null any) so the loop can drop it.
         return code + '(ref.null any)';
+    } else if (ts.isIfStatement(stmt)) {
+        const cond = compileExpression(stmt.expression, ctx);
+        const thenStmt = compileStatement(stmt.thenStatement, ctx);
+        let elsePart = '';
+        if (stmt.elseStatement) {
+            const elseStmt = compileStatement(stmt.elseStatement, ctx);
+            elsePart = `(else ${elseStmt} (drop))`;
+        }
+
+        return `(if (i31.get_s (ref.cast (ref i31) ${cond}))
+            (then ${thenStmt} (drop))
+            ${elsePart}
+        )
+        (ref.null any)`;
     } else if (ts.isForStatement(stmt)) {
         // for (initializer; condition; incrementor) statement
         // (block $break
