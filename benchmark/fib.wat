@@ -27,7 +27,17 @@
   (i32.const 0)
   (ref.null nofunc)
  ))
- (elem declare func $add_f64_f64 $add_f64_i32 $add_i32_f64 $add_i32_i32 $add_unsupported)
+ (global $site_bin_1 (mut (ref $BinaryOpCallSite)) (struct.new $BinaryOpCallSite
+  (i32.const 0)
+  (i32.const 0)
+  (ref.null nofunc)
+ ))
+ (global $site_bin_2 (mut (ref $BinaryOpCallSite)) (struct.new $BinaryOpCallSite
+  (i32.const 0)
+  (i32.const 0)
+  (ref.null nofunc)
+ ))
+ (elem declare func $add_f64_f64 $add_f64_i32 $add_i32_f64 $add_i32_i32 $add_unsupported $sub_f64_f64 $sub_f64_i32 $sub_i32_f64 $sub_i32_i32 $sub_unsupported)
  (export "main" (func $main))
  (func $console_log (type $ClosureSig0) (param $val anyref) (result anyref)
   (if
@@ -374,6 +384,229 @@
    )
   )
  )
+ (func $sub_i32_i32 (type $BinaryOpFunc) (param $0 anyref) (param $1 anyref) (result anyref)
+  (ref.i31
+   (i32.sub
+    (i31.get_s
+     (ref.cast (ref i31)
+      (local.get $0)
+     )
+    )
+    (i31.get_s
+     (ref.cast (ref i31)
+      (local.get $1)
+     )
+    )
+   )
+  )
+ )
+ (func $sub_f64_f64 (type $BinaryOpFunc) (param $0 anyref) (param $1 anyref) (result anyref)
+  (struct.new $BoxedF64
+   (f64.sub
+    (struct.get $BoxedF64 0
+     (ref.cast (ref $BoxedF64)
+      (local.get $0)
+     )
+    )
+    (struct.get $BoxedF64 0
+     (ref.cast (ref $BoxedF64)
+      (local.get $1)
+     )
+    )
+   )
+  )
+ )
+ (func $sub_i32_f64 (type $BinaryOpFunc) (param $0 anyref) (param $1 anyref) (result anyref)
+  (struct.new $BoxedF64
+   (f64.sub
+    (f64.convert_i32_s
+     (i31.get_s
+      (ref.cast (ref i31)
+       (local.get $0)
+      )
+     )
+    )
+    (struct.get $BoxedF64 0
+     (ref.cast (ref $BoxedF64)
+      (local.get $1)
+     )
+    )
+   )
+  )
+ )
+ (func $sub_f64_i32 (type $BinaryOpFunc) (param $0 anyref) (param $1 anyref) (result anyref)
+  (struct.new $BoxedF64
+   (f64.sub
+    (struct.get $BoxedF64 0
+     (ref.cast (ref $BoxedF64)
+      (local.get $0)
+     )
+    )
+    (f64.convert_i32_s
+     (i31.get_s
+      (ref.cast (ref i31)
+       (local.get $1)
+      )
+     )
+    )
+   )
+  )
+ )
+ (func $sub_unsupported (type $BinaryOpFunc) (param $0 anyref) (param $1 anyref) (result anyref)
+  (ref.null none)
+ )
+ (func $sub_slow (type $16) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+  (local $t_lhs i32)
+  (local $t_rhs i32)
+  (local $target (ref null $BinaryOpFunc))
+  (local.set $t_lhs
+   (call $get_type_id
+    (local.get $lhs)
+   )
+  )
+  (local.set $t_rhs
+   (call $get_type_id
+    (local.get $rhs)
+   )
+  )
+  (local.set $target
+   (ref.func $sub_unsupported)
+  )
+  (if
+   (i32.eq
+    (local.get $t_lhs)
+    (i32.const 1)
+   )
+   (then
+    (if
+     (i32.eq
+      (local.get $t_rhs)
+      (i32.const 1)
+     )
+     (then
+      (local.set $target
+       (ref.func $sub_i32_i32)
+      )
+     )
+     (else
+      (if
+       (i32.eq
+        (local.get $t_rhs)
+        (i32.const 2)
+       )
+       (then
+        (local.set $target
+         (ref.func $sub_i32_f64)
+        )
+       )
+      )
+     )
+    )
+   )
+   (else
+    (if
+     (i32.eq
+      (local.get $t_lhs)
+      (i32.const 2)
+     )
+     (then
+      (if
+       (i32.eq
+        (local.get $t_rhs)
+        (i32.const 1)
+       )
+       (then
+        (local.set $target
+         (ref.func $sub_f64_i32)
+        )
+       )
+       (else
+        (if
+         (i32.eq
+          (local.get $t_rhs)
+          (i32.const 2)
+         )
+         (then
+          (local.set $target
+           (ref.func $sub_f64_f64)
+          )
+         )
+        )
+       )
+      )
+     )
+    )
+   )
+  )
+  (struct.set $BinaryOpCallSite $type_lhs
+   (local.get $cache)
+   (local.get $t_lhs)
+  )
+  (struct.set $BinaryOpCallSite $type_rhs
+   (local.get $cache)
+   (local.get $t_rhs)
+  )
+  (struct.set $BinaryOpCallSite $target
+   (local.get $cache)
+   (local.get $target)
+  )
+  (call_ref $BinaryOpFunc
+   (local.get $lhs)
+   (local.get $rhs)
+   (ref.as_non_null
+    (local.get $target)
+   )
+  )
+ )
+ (func $sub_cached (type $16) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+  (if (result anyref)
+   (i32.eq
+    (call $get_type_id
+     (local.get $lhs)
+    )
+    (struct.get $BinaryOpCallSite $type_lhs
+     (local.get $cache)
+    )
+   )
+   (then
+    (if (result anyref)
+     (i32.eq
+      (call $get_type_id
+       (local.get $rhs)
+      )
+      (struct.get $BinaryOpCallSite $type_rhs
+       (local.get $cache)
+      )
+     )
+     (then
+      (call_ref $BinaryOpFunc
+       (local.get $lhs)
+       (local.get $rhs)
+       (ref.as_non_null
+        (struct.get $BinaryOpCallSite $target
+         (local.get $cache)
+        )
+       )
+      )
+     )
+     (else
+      (call $sub_slow
+       (local.get $lhs)
+       (local.get $rhs)
+       (local.get $cache)
+      )
+     )
+    )
+   )
+   (else
+    (call $sub_slow
+     (local.get $lhs)
+     (local.get $rhs)
+     (local.get $cache)
+    )
+   )
+  )
+ )
  (func $less_than (type $ClosureSig1) (param $lhs anyref) (param $rhs anyref) (result anyref)
   (if (result anyref)
    (ref.test (ref i31)
@@ -439,42 +672,24 @@
   )
   (call $add_cached
    (call $fib
-    (ref.i31
-     (i32.sub
-      (i31.get_s
-       (ref.cast (ref i31)
-        (local.get $user_n)
-       )
-      )
-      (i31.get_s
-       (ref.cast (ref i31)
-        (ref.i31
-         (i32.const 1)
-        )
-       )
-      )
+    (call $sub_cached
+     (local.get $user_n)
+     (ref.i31
+      (i32.const 1)
      )
+     (global.get $site_bin_0)
     )
    )
    (call $fib
-    (ref.i31
-     (i32.sub
-      (i31.get_s
-       (ref.cast (ref i31)
-        (local.get $user_n)
-       )
-      )
-      (i31.get_s
-       (ref.cast (ref i31)
-        (ref.i31
-         (i32.const 2)
-        )
-       )
-      )
+    (call $sub_cached
+     (local.get $user_n)
+     (ref.i31
+      (i32.const 2)
      )
+     (global.get $site_bin_1)
     )
    )
-   (global.get $site_bin_0)
+   (global.get $site_bin_2)
   )
  )
  (func $main (type $17) (result anyref)

@@ -204,21 +204,8 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
       } else if (expr.operatorToken.kind === ts.SyntaxKind.MinusToken) {
           const left = compileExpression(expr.left, ctx);
           const right = compileExpression(expr.right, ctx);
-          // For minus, we don't have a cached version yet, but we can assume integers for now or add a helper.
-          // Let's assume the user wants i32 subtraction for fibonacci.
-          // The compiler uses anyref everywhere. We need to unbox, subtract, and box.
-          // Or we can add a runtime helper for subtraction.
-          // Since I cannot modify runtime helpers easily without more context, I will implement a basic inline subtraction for i31/BoxedI32.
-          // But looking at $add_cached, it seems we have helpers.
-          // Let's check if there is a $sub helper.
-          // The memory says "$add_cached" is used.
-          // I'll try to use a simple unboxing strategy here assuming i32 for now, as fib(n) uses integers.
-          // Wait, I should check if I can modify the runtime to add $sub.
-          // But I can also implement it inline using ref.cast/test.
-
-          // Actually, let's just implement a simple subtraction for i31ref which is what small integers use.
-          return `(ref.i31 (i32.sub (i31.get_s (ref.cast (ref i31) ${left})) (i31.get_s (ref.cast (ref i31) ${right}))))`;
-
+          const siteName = registerBinaryOpCallSite();
+          return `(call $sub_cached ${left} ${right} (global.get ${siteName}))`;
       } else if (expr.operatorToken.kind === ts.SyntaxKind.LessThanToken) {
           const left = compileExpression(expr.left, ctx);
           const right = compileExpression(expr.right, ctx);
