@@ -31,6 +31,9 @@ void Compiler::compileModule(const SExpr& module) {
         if (item.is_list && !item.children.empty() && item.children[0].value == "func") {
             parseFuncSig(item);
         }
+        if (item.is_list && !item.children.empty() && item.children[0].value == "global") {
+            parseGlobal(item);
+        }
     }
 
     for (const auto& item : module.children) {
@@ -38,6 +41,33 @@ void Compiler::compileModule(const SExpr& module) {
             compileFunc(item);
         }
     }
+}
+
+void Compiler::parseGlobal(const SExpr& g) {
+    if (g.children.size() < 4) return;
+    GlobalDef gd;
+    gd.name = g.children[1].value;
+    // (global $name (mut type) (init))
+    // or (global $name type (init))
+
+    // We assume init expr is the last child
+    const SExpr& initExpr = g.children.back();
+
+    // Compile init expr
+    // We need to temporarily redirect emission to gd.init_instrs?
+    // Or just append to main instrs but keep track of range?
+    // Let's create a temporary vector for init instrs.
+
+    std::vector<Instr> old_instrs = instrs;
+    instrs.clear();
+    stack.clear();
+
+    compileExpr(initExpr);
+
+    gd.init_instrs = instrs;
+    instrs = old_instrs;
+
+    globals[gd.name] = gd;
 }
 
 void Compiler::parseType(const SExpr& t) {
@@ -82,8 +112,33 @@ void Compiler::parseFuncSig(const SExpr& f) {
             if (e.children[0].value == "param") {
                 for (size_t k = 1; k < e.children.size(); ++k) {
                     string p = e.children[k].value;
-                    if (p[0] == '$') func.params.push_back(p);
-                    else func.params.push_back("");
+                    if (p.length() > 0 && p[0] == '$') {
+                         func.params.push_back(p);
+                         // The next element is the type, skip it.
+                         // Only if this is not the last element?
+                         // WAT syntax: (param $id type)
+                         // But if (param $id) is valid? No, type is required.
+                         // Assume valid WAT.
+                         /*
+                            However, we need to be careful if we have (param $a i32 $b i32) - wait, is that valid?
+                            Usually (param $a i32) (param $b i32).
+                            Or (param i32 i32).
+                            Binaryen sometimes emits (param $a i32).
+                         */
+                         // Only skip if there is a next element?
+                         // Actually, we can just not push anything for the type if we found a name?
+                         // But we loop through children.
+                         // If we just pushed the name, we should skip the next child if it is the type.
+                         // But wait, what if the type is complex `(ref ...)`?
+                         // Then `e.children[k+1]` is the type SExpr.
+                         // So we should increment k.
+                         if (k + 1 < e.children.size()) {
+                             k++;
+                         }
+                    } else {
+                        // Unnamed param (just a type)
+                        func.params.push_back("");
+                    }
                 }
             }
         }
@@ -115,12 +170,32 @@ void Compiler::compileFunc(const SExpr& f) {
 
     for (; idx < f.children.size(); ++idx) {
         const SExpr& e = f.children[idx];
-        if (e.is_list && e.children[0].value == "local") {
+        if (!e.is_list) {
+            // Probably an error or empty node?
+            // If it is just a string/value, it might be an instruction if implicit block?
+            // But usually instructions are lists.
+            // If it is an instruction like `unreachable`, it might be a string if handled as such?
+            // But our parser produces lists for instructions usually.
+            // Assuming instruction starts.
+            break;
+        }
+        if (e.children.empty()) continue;
+
+        string op = e.children[0].value;
+        if (op == "local") {
             for (size_t k = 1; k < e.children.size(); ++k) {
                 string l = e.children[k].value;
-                if (l[0] == '$') local_map[l] = local_idx;
+                if (l.length() > 0 && l[0] == '$') {
+                    local_map[l] = local_idx;
+                    // Skip type
+                    if (k + 1 < e.children.size()) {
+                        k++;
+                    }
+                }
                 local_idx++;
             }
+        } else if (op == "param" || op == "result" || op == "type") {
+            continue;
         } else {
             break;
         }
@@ -221,7 +296,11 @@ void Compiler::compileExpr(const SExpr& e) {
         else if (op == "ref.is_null") opcode = Op::RefIsNull;
         else if (op == "ref.func") { opcode = Op::RefFunc; imm_skip=1; }
         else if (op == "ref.as_non_null") opcode = Op::RefAsNonNull;
-        else if (op == "global.get") { opcode = Op::GlobalGet; imm_skip=1; }
+        else if (op == "global.get") {
+             Instr i; i.op = Op::GlobalGet; i.str_imm = e.children[1].value;
+             stack.push_back(emit(i));
+             return;
+        }
         else if (op == "i32.eq") opcode = Op::EqI32;
         else if (op == "i32.and") opcode = Op::AndI32;
         else if (op == "return") opcode = Op::Return;

@@ -37,3 +37,9 @@ struct TypeDef {
     std::vector<std::string> fields;
     std::map<std::string, int> field_map;
 };
+
+struct GlobalDef {
+    std::string name;
+    std::string type;
+    std::vector<Instr> init_instrs;
+};
