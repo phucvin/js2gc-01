@@ -1,10 +1,55 @@
 (module
+  (rec
+    (type $Shape (struct
+      (field $parent (ref null $Shape))
+      (field $key i32)
+      (field $offset i32)
+    ))
+
+    (type $Storage (array (mut anyref)))
+
+    (type $Object (struct
+      (field $shape (mut (ref $Shape)))
+      (field $storage (mut (ref $Storage)))
+    ))
+  )
+
   (type $BoxedF64 (struct (field f64)))
   (type $BoxedI32 (struct (field i32)))
   (type $BoxedString (struct (field (ref string))))
   (import "env" "print_i32" (func $print_i32 (param i32)))
   (import "env" "print_f64" (func $print_f64 (param f64)))
   (import "env" "print_string" (func $print_string (param (ref string))))
+
+  (func $new_root_shape (result (ref $Shape))
+    (struct.new $Shape
+      (ref.null $Shape)
+      (i32.const -1)
+      (i32.const -1)
+    )
+  )
+
+  (func $extend_shape (param $parent (ref $Shape)) (param $key i32) (param $offset i32) (result (ref $Shape))
+    (struct.new $Shape
+      (local.get $parent)
+      (local.get $key)
+      (local.get $offset)
+    )
+  )
+
+  (func $new_object (param $shape (ref $Shape)) (param $size i32) (result (ref $Object))
+    (struct.new $Object
+      (local.get $shape)
+      (array.new_default $Storage (local.get $size))
+    )
+  )
+
+  (func $set_storage (param $obj (ref $Object)) (param $idx i32) (param $val anyref)
+    (array.set $Storage (struct.get $Object $storage (local.get $obj))
+      (local.get $idx)
+      (local.get $val)
+    )
+  )
 
   (func $console_log (param $val anyref) (result anyref)
     (if (ref.is_null (local.get $val))
@@ -30,6 +75,13 @@
                     (if (ref.test (ref $BoxedString) (local.get $val))
                       (then
                         (call $print_string (struct.get $BoxedString 0 (ref.cast (ref $BoxedString) (local.get $val))))
+                      )
+                      (else
+                         (if (ref.test (ref $Object) (local.get $val))
+                           (then
+                             (call $print_string (string.const "[object Object]"))
+                           )
+                         )
                       )
                     )
                   )
@@ -65,15 +117,19 @@
   )
 
   (func $a  (result anyref)
-    (ref.i31 (i32.const 1))
+
+    (return (ref.i31 (i32.const 1)))
   )
   (func $b  (result anyref)
-    (ref.i31 (i32.const 2))
+
+    (return (ref.i31 (i32.const 2)))
   )
   (func $main (export "main") (result anyref)
-    (call $add (call $a) (call $b))
+
+    (return (call $add (call $a) (call $b)))
   )
   (func $test (export "test") (result anyref)
+
     (call $console_log (call $main))
   )
 )
