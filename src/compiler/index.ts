@@ -1,11 +1,15 @@
 import ts from 'typescript';
 import binaryen from 'binaryen';
 import { compileFunction } from './function.ts';
-import { resetPropertyMap, resetGlobalCallSites, globalCallSites } from './context.ts';
+import { resetPropertyMap, resetGlobalCallSites, globalCallSites, generatedFunctions, resetGeneratedFunctions } from './context.ts';
+import { resetClosureCounter } from './expression.ts';
 
 export function compile(source: string): string {
   resetPropertyMap();
   resetGlobalCallSites();
+  resetGeneratedFunctions();
+  resetClosureCounter();
+
   const sourceFile = ts.createSourceFile(
     'temp.js',
     source,
@@ -34,6 +38,11 @@ export function compile(source: string): string {
     wasmFuncs += compileFunction(func);
   }
 
+  // Append generated closure functions
+  if (generatedFunctions.length > 0) {
+      wasmFuncs += '\n' + generatedFunctions.join('\n');
+  }
+
   // Generate globals
   let globalsDecl = '';
 
@@ -42,6 +51,16 @@ export function compile(source: string): string {
           globalsDecl += `(global ${siteName} (mut (ref $CallSite)) (struct.new $CallSite (ref.null $Shape) (i32.const -1)))\n`;
       }
   }
+
+  // Define some closure types for call_ref
+  const closureSigs = `
+  (type $ClosureSig0 (func (param anyref) (result anyref)))
+  (type $ClosureSig1 (func (param anyref) (param anyref) (result anyref)))
+  (type $ClosureSig2 (func (param anyref) (param anyref) (param anyref) (result anyref)))
+  (type $ClosureSig3 (func (param anyref) (param anyref) (param anyref) (param anyref) (result anyref)))
+  (type $ClosureSig4 (func (param anyref) (param anyref) (param anyref) (param anyref) (param anyref) (result anyref)))
+  (type $ClosureSig5 (func (param anyref) (param anyref) (param anyref) (param anyref) (param anyref) (param anyref) (result anyref)))
+  `;
 
   const wat = `(module
   (rec
@@ -62,7 +81,14 @@ export function compile(source: string): string {
       (field $expected_shape (mut (ref null $Shape)))
       (field $offset (mut i32))
     ))
+
+    (type $Closure (struct
+      (field $func funcref)
+      (field $env anyref)
+    ))
   )
+
+  ${closureSigs}
 
   (type $BoxedF64 (struct (field f64)))
   (type $BoxedI32 (struct (field i32)))
