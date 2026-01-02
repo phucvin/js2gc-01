@@ -41,10 +41,6 @@ async function run() {
         const module = binaryen.parseText(watText);
         module.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes | binaryen.Features.Strings);
 
-        // Optimize? The compiler currently doesn't optimize much, but let's stick to what run_testdata does
-        // which is basically just parse and emit.
-        // Wait, run_testdata doesn't call optimize.
-
         if (!module.validate()) {
             console.error(`Validation failed for ${file}`);
             continue;
@@ -80,6 +76,8 @@ async function run() {
                 main();
                 const end = performance.now();
                 const duration = end - start;
+                console.log(`Wasm Run ${i+1}: ${duration.toFixed(4)} ms`);
+
                 if (duration < wasmDuration) {
                     wasmDuration = duration;
                     wasmOutput = currentOutput;
@@ -88,11 +86,7 @@ async function run() {
             if (wasmDuration === Infinity) continue;
 
             console.log(`Wasm Output: ${wasmOutput.trim()}`);
-            console.log(`Wasm Duration (min of 5): ${wasmDuration.toFixed(4)} ms`);
-
-            // Save output
-            const outPath = path.join(benchmarkDir, `${file.replace('.js', '.out')}`);
-            fs.writeFileSync(outPath, wasmOutput);
+            console.log(`Wasm Best Duration: ${wasmDuration.toFixed(4)} ms`);
 
         } catch (e) {
             console.error(`Wasm execution failed:`, e);
@@ -122,6 +116,8 @@ async function run() {
                     main();
                     const end = performance.now();
                     const duration = end - start;
+                    console.log(`JS Run ${i+1}: ${duration.toFixed(4)} ms`);
+
                     if (duration < jsDuration) {
                         jsDuration = duration;
                         jsOutput = currentOutput;
@@ -134,7 +130,7 @@ async function run() {
 
             if (jsDuration !== Infinity) {
                 console.log(`JS Output: ${jsOutput.trim()}`);
-                console.log(`JS Duration (min of 5): ${jsDuration.toFixed(4)} ms`);
+                console.log(`JS Best Duration: ${jsDuration.toFixed(4)} ms`);
             }
 
         } catch (e) {
