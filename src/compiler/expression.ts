@@ -201,6 +201,11 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
           const right = compileExpression(expr.right, ctx);
           const siteName = registerBinaryOpCallSite();
           return `(call $add_cached ${left} ${right} (global.get ${siteName}))`;
+      } else if (expr.operatorToken.kind === ts.SyntaxKind.MinusToken) {
+          const left = compileExpression(expr.left, ctx);
+          const right = compileExpression(expr.right, ctx);
+          const siteName = registerBinaryOpCallSite();
+          return `(call $sub_cached ${left} ${right} (global.get ${siteName}))`;
       } else if (expr.operatorToken.kind === ts.SyntaxKind.LessThanToken) {
           const left = compileExpression(expr.left, ctx);
           const right = compileExpression(expr.right, ctx);

@@ -29,6 +29,32 @@ export function compileStatement(stmt: ts.Statement, ctx: CompilationContext): s
         // If we return (local.set ...), it consumes the value.
         // So we should append (ref.null any) so the loop can drop it.
         return code + '(ref.null any)';
+    } else if (ts.isIfStatement(stmt)) {
+        const cond = compileExpression(stmt.expression, ctx);
+        const thenBody = ts.isBlock(stmt.thenStatement)
+            ? compileBody(stmt.thenStatement, ctx)
+            : compileStatement(stmt.thenStatement, ctx);
+
+        let elseBody = '(ref.null any)';
+        if (stmt.elseStatement) {
+            elseBody = ts.isBlock(stmt.elseStatement)
+                ? compileBody(stmt.elseStatement, ctx)
+                : compileStatement(stmt.elseStatement, ctx);
+        }
+
+        // We assume condition returns an i31ref (boolean).
+        // If returns value, then/else branches must match.
+        // Since we are in a statement context, usually we drop the result, but compileBody returns the last value.
+        // If this IfStatement is the last statement in a function, it should return a value.
+        // Wasm `if` returns a value if declared.
+        // We will declare it to return `anyref` to be safe and compatible with our function signature.
+
+        return `
+        (if (result anyref) (i31.get_s (ref.cast (ref i31) ${cond}))
+            (then ${thenBody})
+            (else ${elseBody})
+        )`;
+
     } else if (ts.isForStatement(stmt)) {
         // for (initializer; condition; incrementor) statement
         // (block $break

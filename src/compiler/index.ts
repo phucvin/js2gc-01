@@ -112,6 +112,7 @@ export function compile(source: string): string {
   (import "env" "print_string" (func $print_string (param (ref string))))
 
   (elem declare func $add_i32_i32 $add_f64_f64 $add_i32_f64 $add_f64_i32 $add_unsupported)
+  (elem declare func $sub_i32_i32 $sub_f64_f64 $sub_i32_f64 $sub_f64_i32 $sub_unsupported)
 
   ${globalsDecl}
 
@@ -373,6 +374,96 @@ export function compile(source: string): string {
           )
           (else
                (call $add_slow (local.get $lhs) (local.get $rhs) (local.get $cache))
+          )
+      )
+  )
+
+  (func $sub_i32_i32 (type $BinaryOpFunc)
+    (ref.i31 (i32.sub
+        (i31.get_s (ref.cast (ref i31) (local.get 0)))
+        (i31.get_s (ref.cast (ref i31) (local.get 1)))
+    ))
+  )
+
+  (func $sub_f64_f64 (type $BinaryOpFunc)
+    (struct.new $BoxedF64 (f64.sub
+        (struct.get $BoxedF64 0 (ref.cast (ref $BoxedF64) (local.get 0)))
+        (struct.get $BoxedF64 0 (ref.cast (ref $BoxedF64) (local.get 1)))
+    ))
+  )
+
+  (func $sub_i32_f64 (type $BinaryOpFunc)
+    (struct.new $BoxedF64 (f64.sub
+        (f64.convert_i32_s (i31.get_s (ref.cast (ref i31) (local.get 0))))
+        (struct.get $BoxedF64 0 (ref.cast (ref $BoxedF64) (local.get 1)))
+    ))
+  )
+
+  (func $sub_f64_i32 (type $BinaryOpFunc)
+    (struct.new $BoxedF64 (f64.sub
+        (struct.get $BoxedF64 0 (ref.cast (ref $BoxedF64) (local.get 0)))
+        (f64.convert_i32_s (i31.get_s (ref.cast (ref i31) (local.get 1))))
+    ))
+  )
+
+  (func $sub_unsupported (type $BinaryOpFunc)
+    (ref.null any)
+  )
+
+  (func $sub_slow (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+      (local $t_lhs i32)
+      (local $t_rhs i32)
+      (local $target (ref null $BinaryOpFunc))
+
+      (local.set $t_lhs (call $get_type_id (local.get $lhs)))
+      (local.set $t_rhs (call $get_type_id (local.get $rhs)))
+
+      ;; Default to sub_unsupported
+      (local.set $target (ref.func $sub_unsupported))
+
+      (if (i32.eq (local.get $t_lhs) (i32.const 1)) ;; i31
+          (then
+              (if (i32.eq (local.get $t_rhs) (i32.const 1))
+                  (then (local.set $target (ref.func $sub_i32_i32)))
+                  (else (if (i32.eq (local.get $t_rhs) (i32.const 2))
+                      (then (local.set $target (ref.func $sub_i32_f64)))
+                  ))
+              )
+          )
+          (else (if (i32.eq (local.get $t_lhs) (i32.const 2)) ;; f64
+              (then
+                  (if (i32.eq (local.get $t_rhs) (i32.const 1))
+                      (then (local.set $target (ref.func $sub_f64_i32)))
+                      (else (if (i32.eq (local.get $t_rhs) (i32.const 2))
+                          (then (local.set $target (ref.func $sub_f64_f64)))
+                      ))
+                  )
+              )
+          ))
+      )
+
+      ;; Update cache
+      (struct.set $BinaryOpCallSite $type_lhs (local.get $cache) (local.get $t_lhs))
+      (struct.set $BinaryOpCallSite $type_rhs (local.get $cache) (local.get $t_rhs))
+      (struct.set $BinaryOpCallSite $target (local.get $cache) (local.get $target))
+
+      (call_ref $BinaryOpFunc (local.get $lhs) (local.get $rhs) (ref.as_non_null (local.get $target)))
+  )
+
+  (func $sub_cached (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+      (if (result anyref) (i32.eq (call $get_type_id (local.get $lhs)) (struct.get $BinaryOpCallSite $type_lhs (local.get $cache)))
+          (then
+              (if (result anyref) (i32.eq (call $get_type_id (local.get $rhs)) (struct.get $BinaryOpCallSite $type_rhs (local.get $cache)))
+                  (then
+                       (call_ref $BinaryOpFunc (local.get $lhs) (local.get $rhs) (ref.as_non_null (struct.get $BinaryOpCallSite $target (local.get $cache))))
+                  )
+                  (else
+                       (call $sub_slow (local.get $lhs) (local.get $rhs) (local.get $cache))
+                  )
+              )
+          )
+          (else
+              (call $sub_slow (local.get $lhs) (local.get $rhs) (local.get $cache))
           )
       )
   )
