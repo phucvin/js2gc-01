@@ -7,6 +7,28 @@ export function compileStatement(stmt: ts.Statement, ctx: CompilationContext): s
         return `(return ${compileExpression(stmt.expression, ctx)})`;
     } else if (ts.isExpressionStatement(stmt)) {
         return compileExpression(stmt.expression, ctx);
+    } else if (ts.isVariableStatement(stmt)) {
+        let code = '';
+        for (const decl of stmt.declarationList.declarations) {
+            if (ts.isIdentifier(decl.name)) {
+                const varName = decl.name.text;
+                const localName = `$user_${varName}`;
+                ctx.addLocal(localName, 'anyref');
+
+                if (decl.initializer) {
+                    const initVal = compileExpression(decl.initializer, ctx);
+                    code += `(local.set ${localName} ${initVal})\n`;
+                } else {
+                    code += `(local.set ${localName} (ref.null any))\n`;
+                }
+            }
+        }
+        // Statements in compileBody are expected to leave a value to be dropped or be void.
+        // However, VariableStatement in JS is void.
+        // But our compileBody loop adds (drop) after every statement except the last one.
+        // If we return (local.set ...), it consumes the value.
+        // So we should append (ref.null any) so the loop can drop it.
+        return code + '(ref.null any)';
     }
     return '';
 }

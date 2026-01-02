@@ -72,24 +72,32 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
           const left = compileExpression(expr.left, ctx);
           const right = compileExpression(expr.right, ctx);
           return `(call $add ${left} ${right})`;
+      } else if (expr.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
+          // Assignment
+          if (ts.isIdentifier(expr.left)) {
+              const varName = expr.left.text;
+              const localName = `$user_${varName}`;
+              if (!ctx.hasLocal(localName)) {
+                  throw new Error(`Variable ${varName} not declared`);
+              }
+              const right = compileExpression(expr.right, ctx);
+              return `(local.tee ${localName} ${right})`;
+          }
       }
   } else if (ts.isPropertyAccessExpression(expr)) {
       if (ts.isIdentifier(expr.name)) {
           const keyId = getPropertyId(expr.name.text);
           const objCode = compileExpression(expr.expression, ctx);
-          // objCode returns (ref $Object). We need to handle if it is not $Object?
-          // For now assuming it returns something we can cast to $Object.
-          // But wait, compileExpression returns string of WAT.
-          // The return type of all expressions in this compiler seems to be `anyref` generally,
-          // except `isObjectLiteralExpression` which returns `(ref $Object)`.
-          // We should cast to (ref $Object) before calling $get_property.
-
-          // However, we don't know if the expression evaluates to an Object or something else at compile time easily without types.
-          // In this simple compiler, we can assume it's an object or add a runtime check (cast).
-          // Let's use ref.cast (ref $Object).
-
+          // Cast to (ref $Object) assuming it is an object
           return `(call $get_property (ref.cast (ref $Object) ${objCode}) (i32.const ${keyId}))`;
       }
+  } else if (ts.isIdentifier(expr)) {
+      const varName = expr.text;
+      const localName = `$user_${varName}`;
+      if (ctx.hasLocal(localName)) {
+          return `(local.get ${localName})`;
+      }
+      throw new Error(`Unknown identifier: ${varName}`);
   }
 
   throw new Error(`Unsupported expression kind: ${ts.SyntaxKind[expr.kind]}`);
