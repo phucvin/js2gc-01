@@ -26,6 +26,9 @@
   (import "env" "print_f64" (func $print_f64 (param f64)))
   (import "env" "print_string" (func $print_string (param (ref string))))
 
+  (global $init_done (mut i32) (i32.const 0))
+
+
   (func $new_root_shape (result (ref $Shape))
     (struct.new $Shape
       (ref.null $Shape)
@@ -62,6 +65,17 @@
       (i32.const -1)
     )
   )
+
+  (func $init_globals
+    (if (i32.eq (global.get $init_done) (i32.const 0))
+      (then
+
+        (global.set $init_done (i32.const 1))
+      )
+    )
+  )
+
+  (start $init_globals)
 
   (func $lookup_in_shape (param $shape (ref $Shape)) (param $key i32) (result i32)
     (local $curr (ref null $Shape))

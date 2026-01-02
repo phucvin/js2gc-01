@@ -26,6 +26,11 @@
   (import "env" "print_f64" (func $print_f64 (param f64)))
   (import "env" "print_string" (func $print_string (param (ref string))))
 
+  (global $init_done (mut i32) (i32.const 0))
+  (global $site_0 (mut (ref null $CallSite)) (ref.null $CallSite))
+(global $site_1 (mut (ref null $CallSite)) (ref.null $CallSite))
+
+
   (func $new_root_shape (result (ref $Shape))
     (struct.new $Shape
       (ref.null $Shape)
@@ -62,6 +67,19 @@
       (i32.const -1)
     )
   )
+
+  (func $init_globals
+    (if (i32.eq (global.get $init_done) (i32.const 0))
+      (then
+        (global.set $site_0 (call $new_callsite))
+(global.set $site_1 (call $new_callsite))
+
+        (global.set $init_done (i32.const 1))
+      )
+    )
+  )
+
+  (start $init_globals)
 
   (func $lookup_in_shape (param $shape (ref $Shape)) (param $key i32) (result i32)
     (local $curr (ref null $Shape))
@@ -201,14 +219,10 @@
   )
 
   (func $main (export "main") (result anyref)
-    (local $user_obj anyref)
+    (local $user_o anyref)
 (local $temp_0 (ref null $Object))
-(local $user_sum anyref)
-(local $user_i anyref)
-(local $cache_1 (ref null $CallSite))
-(local $temp_2 anyref)
 
-    (local.set $user_obj (block (result (ref $Object))
+    (local.set $user_o (block (result (ref $Object))
          (local.set $temp_0 (call $new_object (call $extend_shape (call $extend_shape (call $new_root_shape) (i32.const 0) (i32.const 0)) (i32.const 1) (i32.const 1)) (i32.const 2)))
          (call $set_storage (ref.as_non_null (local.get $temp_0)) (i32.const 0) (ref.i31 (i32.const 1)))
 (call $set_storage (ref.as_non_null (local.get $temp_0)) (i32.const 1) (ref.i31 (i32.const 2)))
@@ -217,31 +231,8 @@
       ))
 (ref.null any)
 (drop)
-(local.set $user_sum (ref.i31 (i32.const 0)))
-(ref.null any)
+(call $console_log (call $get_field_cached (ref.cast (ref $Object) (local.get $user_o)) (ref.as_non_null (global.get $site_0)) (i32.const 0)))
 (drop)
-(local.set $user_i (ref.i31 (i32.const 0)))
-(block $break
-  (loop $continue
-    (br_if $break (i32.eqz (i31.get_s (ref.cast (ref i31) (call $less_than (local.get $user_i) (ref.i31 (i32.const 1000)))))))
-(local.tee $user_sum (call $add (local.get $user_sum) (block (result anyref)
-             (if (ref.is_null (local.get $cache_1))
-               (then (local.set $cache_1 (call $new_callsite)))
-             )
-             (call $get_field_cached (ref.cast (ref $Object) (local.get $user_obj)) (ref.as_non_null (local.get $cache_1)) (i32.const 1))
-          )))
-(drop)
-(block (result anyref)
-                  (local.set $temp_2 (local.get $user_i))
-                  (local.set $user_i (call $add (local.get $temp_2) (ref.i31 (i32.const 1))))
-                  (local.get $temp_2)
-              )
-(drop)
-    (br $continue)
-  )
-)
-(ref.null any)
-(drop)
-(call $console_log (local.get $user_sum))
+(call $console_log (call $get_field_cached (ref.cast (ref $Object) (local.get $user_o)) (ref.as_non_null (global.get $site_1)) (i32.const 1)))
   )
 )

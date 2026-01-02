@@ -26,6 +26,11 @@
   (import "env" "print_f64" (func $print_f64 (param f64)))
   (import "env" "print_string" (func $print_string (param (ref string))))
 
+  (global $init_done (mut i32) (i32.const 0))
+  (global $site_0 (mut (ref null $CallSite)) (ref.null $CallSite))
+(global $site_1 (mut (ref null $CallSite)) (ref.null $CallSite))
+
+
   (func $new_root_shape (result (ref $Shape))
     (struct.new $Shape
       (ref.null $Shape)
@@ -62,6 +67,19 @@
       (i32.const -1)
     )
   )
+
+  (func $init_globals
+    (if (i32.eq (global.get $init_done) (i32.const 0))
+      (then
+        (global.set $site_0 (call $new_callsite))
+(global.set $site_1 (call $new_callsite))
+
+        (global.set $init_done (i32.const 1))
+      )
+    )
+  )
+
+  (start $init_globals)
 
   (func $lookup_in_shape (param $shape (ref $Shape)) (param $key i32) (result i32)
     (local $curr (ref null $Shape))
@@ -202,33 +220,21 @@
 
   (func $test (export "test") (result anyref)
     (local $temp_0 (ref null $Object))
-(local $cache_1 (ref null $CallSite))
-(local $temp_2 (ref null $Object))
-(local $cache_3 (ref null $CallSite))
+(local $temp_1 (ref null $Object))
 
-    (call $console_log (block (result anyref)
-             (if (ref.is_null (local.get $cache_1))
-               (then (local.set $cache_1 (call $new_callsite)))
-             )
-             (call $get_field_cached (ref.cast (ref $Object) (block (result (ref $Object))
+    (call $console_log (call $get_field_cached (ref.cast (ref $Object) (block (result (ref $Object))
          (local.set $temp_0 (call $new_object (call $extend_shape (call $new_root_shape) (i32.const 0) (i32.const 0)) (i32.const 1)))
          (call $set_storage (ref.as_non_null (local.get $temp_0)) (i32.const 0) (ref.i31 (i32.const 123)))
 
          (ref.as_non_null (local.get $temp_0))
-      )) (ref.as_non_null (local.get $cache_1)) (i32.const 0))
-          ))
+      )) (ref.as_non_null (global.get $site_0)) (i32.const 0)))
 (drop)
-(call $console_log (block (result anyref)
-             (if (ref.is_null (local.get $cache_3))
-               (then (local.set $cache_3 (call $new_callsite)))
-             )
-             (call $get_field_cached (ref.cast (ref $Object) (block (result (ref $Object))
-         (local.set $temp_2 (call $new_object (call $extend_shape (call $extend_shape (call $new_root_shape) (i32.const 2) (i32.const 0)) (i32.const 1) (i32.const 1)) (i32.const 2)))
-         (call $set_storage (ref.as_non_null (local.get $temp_2)) (i32.const 0) (ref.i31 (i32.const 10)))
-(call $set_storage (ref.as_non_null (local.get $temp_2)) (i32.const 1) (ref.i31 (i32.const 20)))
+(call $console_log (call $get_field_cached (ref.cast (ref $Object) (block (result (ref $Object))
+         (local.set $temp_1 (call $new_object (call $extend_shape (call $extend_shape (call $new_root_shape) (i32.const 2) (i32.const 0)) (i32.const 1) (i32.const 1)) (i32.const 2)))
+         (call $set_storage (ref.as_non_null (local.get $temp_1)) (i32.const 0) (ref.i31 (i32.const 10)))
+(call $set_storage (ref.as_non_null (local.get $temp_1)) (i32.const 1) (ref.i31 (i32.const 20)))
 
-         (ref.as_non_null (local.get $temp_2))
-      )) (ref.as_non_null (local.get $cache_3)) (i32.const 1))
-          ))
+         (ref.as_non_null (local.get $temp_1))
+      )) (ref.as_non_null (global.get $site_1)) (i32.const 1)))
   )
 )
