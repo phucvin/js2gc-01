@@ -35,12 +35,10 @@ export function compile(source: string): string {
 
   // Generate globals
   let globalsDecl = '';
-  let globalsInit = '';
 
   if (globalCallSites.length > 0) {
       for (const siteName of globalCallSites) {
-          globalsDecl += `(global ${siteName} (mut (ref null $CallSite)) (ref.null $CallSite))\n`;
-          globalsInit += `(global.set ${siteName} (call $new_callsite))\n`;
+          globalsDecl += `(global ${siteName} (mut (ref $CallSite)) (struct.new $CallSite (ref.null $Shape) (i32.const -1)))\n`;
       }
   }
 
@@ -72,7 +70,6 @@ export function compile(source: string): string {
   (import "env" "print_f64" (func $print_f64 (param f64)))
   (import "env" "print_string" (func $print_string (param (ref string))))
 
-  (global $init_done (mut i32) (i32.const 0))
   ${globalsDecl}
 
   (func $new_root_shape (result (ref $Shape))
@@ -104,24 +101,6 @@ export function compile(source: string): string {
       (local.get $val)
     )
   )
-
-  (func $new_callsite (result (ref $CallSite))
-    (struct.new $CallSite
-      (ref.null $Shape)
-      (i32.const -1)
-    )
-  )
-
-  (func $init_globals
-    (if (i32.eq (global.get $init_done) (i32.const 0))
-      (then
-        ${globalsInit}
-        (global.set $init_done (i32.const 1))
-      )
-    )
-  )
-
-  (start $init_globals)
 
   (func $lookup_in_shape (param $shape (ref $Shape)) (param $key i32) (result i32)
     (local $curr (ref null $Shape))

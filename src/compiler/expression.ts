@@ -113,7 +113,7 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
           const cacheGlobal = registerGlobalCallSite();
 
           // Since the global is initialized at startup, we can assume it's non-null.
-          return `(call $get_field_cached (ref.cast (ref $Object) ${objCode}) (ref.as_non_null (global.get ${cacheGlobal})) (i32.const ${keyId}))`;
+          return `(call $get_field_cached (ref.cast (ref $Object) ${objCode}) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
       }
   } else if (ts.isIdentifier(expr)) {
       const varName = expr.text;
