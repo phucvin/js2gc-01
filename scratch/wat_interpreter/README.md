@@ -19,14 +19,14 @@ This will produce a `wat_interpreter` binary.
 
 ## Example
 
-Running `testdata/int_i31.wat`:
+Running `testdata/add.wat`:
 
 Command:
 ```bash
-./wat_interpreter ../../testdata/int_i31.wat
+./wat_interpreter ../../testdata/add.wat
 ```
 
 Output:
 ```
-100
+3
 ```
