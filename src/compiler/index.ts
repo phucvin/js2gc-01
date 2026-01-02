@@ -1,9 +1,10 @@
 import ts from 'typescript';
 import { compileFunction } from './function.ts';
-import { resetPropertyMap } from './context.ts';
+import { resetPropertyMap, resetGlobalCallSites, globalCallSites } from './context.ts';
 
 export function compile(source: string): string {
   resetPropertyMap();
+  resetGlobalCallSites();
   const sourceFile = ts.createSourceFile(
     'temp.js',
     source,
@@ -30,6 +31,17 @@ export function compile(source: string): string {
 
   for (const func of functions) {
     wasmFuncs += compileFunction(func);
+  }
+
+  // Generate globals
+  let globalsDecl = '';
+  let globalsInit = '';
+
+  if (globalCallSites.length > 0) {
+      for (const siteName of globalCallSites) {
+          globalsDecl += `(global ${siteName} (mut (ref null $CallSite)) (ref.null $CallSite))\n`;
+          globalsInit += `(global.set ${siteName} (call $new_callsite))\n`;
+      }
   }
 
   return `(module
@@ -59,6 +71,9 @@ export function compile(source: string): string {
   (import "env" "print_i32" (func $print_i32 (param i32)))
   (import "env" "print_f64" (func $print_f64 (param f64)))
   (import "env" "print_string" (func $print_string (param (ref string))))
+
+  (global $init_done (mut i32) (i32.const 0))
+  ${globalsDecl}
 
   (func $new_root_shape (result (ref $Shape))
     (struct.new $Shape
@@ -96,6 +111,17 @@ export function compile(source: string): string {
       (i32.const -1)
     )
   )
+
+  (func $init_globals
+    (if (i32.eq (global.get $init_done) (i32.const 0))
+      (then
+        ${globalsInit}
+        (global.set $init_done (i32.const 1))
+      )
+    )
+  )
+
+  (start $init_globals)
 
   (func $lookup_in_shape (param $shape (ref $Shape)) (param $key i32) (result i32)
     (local $curr (ref null $Shape))

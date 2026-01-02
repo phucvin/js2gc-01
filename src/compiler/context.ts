@@ -1,4 +1,5 @@
 export const propertyMap: Map<string, number> = new Map();
+export const globalCallSites: string[] = [];
 
 export function getPropertyId(name: string): number {
     if (!propertyMap.has(name)) {
@@ -9,6 +10,16 @@ export function getPropertyId(name: string): number {
 
 export function resetPropertyMap() {
     propertyMap.clear();
+}
+
+export function resetGlobalCallSites() {
+    globalCallSites.length = 0;
+}
+
+export function registerGlobalCallSite(): string {
+    const name = `$site_${globalCallSites.length}`;
+    globalCallSites.push(name);
+    return name;
 }
 
 export class CompilationContext {

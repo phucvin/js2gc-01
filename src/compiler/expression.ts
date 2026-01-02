@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import { getPropertyId, CompilationContext } from './context.ts';
+import { getPropertyId, CompilationContext, registerGlobalCallSite } from './context.ts';
 
 export function compileExpression(expr: ts.Expression, ctx: CompilationContext): string {
   if (ts.isNumericLiteral(expr)) {
@@ -109,27 +109,11 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
           const keyId = getPropertyId(expr.name.text);
           const objCode = compileExpression(expr.expression, ctx);
 
-          // Initialize the call site
-          // Note: In a real compiler, we would hoist this initialization or use a global.
-          // For now, we'll initialize it locally, which is suboptimal but works for demonstration if we had persistent locals.
-          // Actually, `ctx.getTempLocal` reuses locals, so we need to be careful.
-          // To implement inline cache properly, the CallSite must persist across executions of this code point.
-          // Since we compile to a single function body mostly, we can't easily allocate static globals per callsite yet without more complex codegen.
-          // However, the task assumes we support inline cache.
-          // Let's create a new local variable for each property access that is NOT a temp local, effectively acting as a function-scoped cache.
-          // But wait, `ctx` doesn't support allocating "persistent" locals per AST node easily.
-          // We can allocate a unique local for this specific property access.
+          // Use a global variable for the inline cache site
+          const cacheGlobal = registerGlobalCallSite();
 
-          const cacheLocal = ctx.getUniqueLocalName('$cache_');
-          // Start with nullable type to avoid validation errors about initialization
-          ctx.addLocal(cacheLocal, '(ref null $CallSite)');
-
-          return `(block (result anyref)
-             (if (ref.is_null (local.get ${cacheLocal}))
-               (then (local.set ${cacheLocal} (call $new_callsite)))
-             )
-             (call $get_field_cached (ref.cast (ref $Object) ${objCode}) (ref.as_non_null (local.get ${cacheLocal})) (i32.const ${keyId}))
-          )`;
+          // Since the global is initialized at startup, we can assume it's non-null.
+          return `(call $get_field_cached (ref.cast (ref $Object) ${objCode}) (ref.as_non_null (global.get ${cacheGlobal})) (i32.const ${keyId}))`;
       }
   } else if (ts.isIdentifier(expr)) {
       const varName = expr.text;
