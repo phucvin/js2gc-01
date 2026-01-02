@@ -32,4 +32,12 @@ export class CompilationContext {
         this.addLocal(name, type);
         return name;
     }
+
+    getUniqueLocalName(prefix: string): string {
+        return `${prefix}${this.tempCounter++}`;
+    }
+
+    updateLocalType(name: string, type: string) {
+        this.locals.set(name, type);
+    }
 }

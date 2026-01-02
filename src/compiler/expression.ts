@@ -88,8 +88,28 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
       if (ts.isIdentifier(expr.name)) {
           const keyId = getPropertyId(expr.name.text);
           const objCode = compileExpression(expr.expression, ctx);
-          // Cast to (ref $Object) assuming it is an object
-          return `(call $get_property (ref.cast (ref $Object) ${objCode}) (i32.const ${keyId}))`;
+
+          // Initialize the call site
+          // Note: In a real compiler, we would hoist this initialization or use a global.
+          // For now, we'll initialize it locally, which is suboptimal but works for demonstration if we had persistent locals.
+          // Actually, `ctx.getTempLocal` reuses locals, so we need to be careful.
+          // To implement inline cache properly, the CallSite must persist across executions of this code point.
+          // Since we compile to a single function body mostly, we can't easily allocate static globals per callsite yet without more complex codegen.
+          // However, the task assumes we support inline cache.
+          // Let's create a new local variable for each property access that is NOT a temp local, effectively acting as a function-scoped cache.
+          // But wait, `ctx` doesn't support allocating "persistent" locals per AST node easily.
+          // We can allocate a unique local for this specific property access.
+
+          const cacheLocal = ctx.getUniqueLocalName('$cache_');
+          // Start with nullable type to avoid validation errors about initialization
+          ctx.addLocal(cacheLocal, '(ref null $CallSite)');
+
+          return `(block (result anyref)
+             (if (ref.is_null (local.get ${cacheLocal}))
+               (then (local.set ${cacheLocal} (call $new_callsite)))
+             )
+             (call $get_field_cached (ref.cast (ref $Object) ${objCode}) (ref.as_non_null (local.get ${cacheLocal})) (i32.const ${keyId}))
+          )`;
       }
   } else if (ts.isIdentifier(expr)) {
       const varName = expr.text;
