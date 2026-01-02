@@ -82,3 +82,10 @@ JS Best Duration: 4.0641 ms
 Ratio (Wasm/JS): 4.99x (Lower is better)
 Result: JS is 4.99x faster
 ```
+
+## Benchmark Results
+
+| Benchmark | JS (ms) | Wasm IC (ms) | Wasm No IC (ms) | Ratio Wasm(IC)/JS | Ratio Wasm(NoIC)/JS |
+|---|---|---|---|---|---|
+| fib.js | 56351.3957 | 5400.7008 | 6203.0335 | 0.10 | 0.11 |
+| field_access.js | 4.7349 | 20.2351 | 32.0765 | 4.27 | 6.77 |
