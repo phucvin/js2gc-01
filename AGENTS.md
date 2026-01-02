@@ -23,7 +23,10 @@ You are required to log your interactions.
         <content>
         ```
 
-3.  **Submit Changes**:
+3.  **Summarize Before PR**:
+    -   Before creating a PR, update the "Summary" section at the top of the session file to "summarize with medium details what happened here". This ensures the memory record captures a clear context of the work done.
+
+4.  **Submit Changes**:
     -   Always submit or create a PR if there are changes to the `agents-memory` directory.
 
 ## Memory Retrieval
