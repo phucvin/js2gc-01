@@ -3,7 +3,7 @@
 #include <vector>
 
 struct RuntimeValue {
-    int type = 0; // 0=i32/f64/null, 1=i31, 2=BoxedF64...
+    int type = 0; // 0=i32/f64/null, 1=i31, 2=Struct/Boxed, 3=String, 4=FuncRef
     long long i_val = 0;
     double f_val = 0;
     std::string s_val;
