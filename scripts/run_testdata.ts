@@ -63,12 +63,16 @@ async function run() {
             const instance = await WebAssembly.instantiate(compiled, imports);
 
             const test = instance.exports.test as () => void;
-            if (typeof test !== 'function') {
-                console.error(`Example ${file} does not export a 'test' function.`);
+            const main = instance.exports.main as () => void;
+
+            if (typeof test === 'function') {
+                test();
+            } else if (typeof main === 'function') {
+                main();
+            } else {
+                console.error(`Example ${file} does not export a 'test' or 'main' function.`);
                 continue;
             }
-
-            test();
 
             // Trim trailing newline if needed, or keep it. JS console.log adds newline.
             // My print helpers add newline in this variable accumulation.
