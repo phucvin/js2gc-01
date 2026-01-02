@@ -26,9 +26,8 @@
   (import "env" "print_f64" (func $print_f64 (param f64)))
   (import "env" "print_string" (func $print_string (param (ref string))))
 
-  (global $init_done (mut i32) (i32.const 0))
-  (global $site_0 (mut (ref null $CallSite)) (ref.null $CallSite))
-(global $site_1 (mut (ref null $CallSite)) (ref.null $CallSite))
+  (global $site_0 (mut (ref $CallSite)) (struct.new $CallSite (ref.null $Shape) (i32.const -1)))
+(global $site_1 (mut (ref $CallSite)) (struct.new $CallSite (ref.null $Shape) (i32.const -1)))
 
 
   (func $new_root_shape (result (ref $Shape))
@@ -60,26 +59,6 @@
       (local.get $val)
     )
   )
-
-  (func $new_callsite (result (ref $CallSite))
-    (struct.new $CallSite
-      (ref.null $Shape)
-      (i32.const -1)
-    )
-  )
-
-  (func $init_globals
-    (if (i32.eq (global.get $init_done) (i32.const 0))
-      (then
-        (global.set $site_0 (call $new_callsite))
-(global.set $site_1 (call $new_callsite))
-
-        (global.set $init_done (i32.const 1))
-      )
-    )
-  )
-
-  (start $init_globals)
 
   (func $lookup_in_shape (param $shape (ref $Shape)) (param $key i32) (result i32)
     (local $curr (ref null $Shape))
@@ -231,8 +210,8 @@
       ))
 (ref.null any)
 (drop)
-(call $console_log (call $get_field_cached (ref.cast (ref $Object) (local.get $user_o)) (ref.as_non_null (global.get $site_0)) (i32.const 0)))
+(call $console_log (call $get_field_cached (ref.cast (ref $Object) (local.get $user_o)) (global.get $site_0) (i32.const 0)))
 (drop)
-(call $console_log (call $get_field_cached (ref.cast (ref $Object) (local.get $user_o)) (ref.as_non_null (global.get $site_1)) (i32.const 1)))
+(call $console_log (call $get_field_cached (ref.cast (ref $Object) (local.get $user_o)) (global.get $site_1) (i32.const 1)))
   )
 )
