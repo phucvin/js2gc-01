@@ -5,174 +5,230 @@
   (type $Object (struct (field $shape (mut (ref $Shape))) (field $storage (mut (ref $Storage)))))
   (type $CallSite (struct (field $expected_shape (mut (ref null $Shape))) (field $offset (mut i32))))
  )
- (type $4 (func (result i32)))
- (type $5 (func (param (ref $Object) i32 (ref i31))))
- (type $6 (func (param (ref $Object) (ref $CallSite)) (result anyref)))
+ (type $4 (func (result (ref $Shape))))
+ (type $5 (func (param (ref $Shape) i32 i32) (result (ref $Shape))))
+ (type $6 (func (param (ref $Shape) i32) (result i32)))
+ (type $7 (func (param (ref $Shape) i32) (result (ref $Object))))
+ (type $8 (func (param (ref $Object) i32 anyref)))
+ (type $9 (func (result (ref $CallSite))))
+ (type $10 (func (param (ref $Object) (ref $CallSite) i32) (result anyref)))
+ (type $11 (func (result i32)))
  (export "main" (func $main))
- (func $set_storage (type $5) (param $0 (ref $Object)) (param $1 i32) (param $2 (ref i31))
-  (array.set $Storage
-   (struct.get $Object $storage
-    (local.get $0)
-   )
-   (local.get $1)
-   (local.get $2)
+ (func $new_root_shape (type $4) (result (ref $Shape))
+  (struct.new $Shape
+   (ref.null none)
+   (i32.const -1)
+   (i32.const -1)
   )
  )
- (func $get_field_cached (type $6) (param $0 (ref $Object)) (param $1 (ref $CallSite)) (result anyref)
-  (local $2 (ref null $Shape))
-  (local $3 i32)
-  (local $4 (ref null $Object))
-  (local $5 (ref null $Shape))
+ (func $extend_shape (type $5) (param $parent (ref $Shape)) (param $key i32) (param $offset i32) (result (ref $Shape))
+  (struct.new $Shape
+   (local.get $parent)
+   (local.get $key)
+   (local.get $offset)
+  )
+ )
+ (func $lookup_in_shape (type $6) (param $shape (ref $Shape)) (param $key i32) (result i32)
+  (local $curr (ref null $Shape))
+  (local.set $curr
+   (local.get $shape)
+  )
+  (loop $search
+   (if
+    (ref.is_null
+     (local.get $curr)
+    )
+    (then
+     (return
+      (i32.const -1)
+     )
+    )
+   )
+   (if
+    (i32.eq
+     (struct.get $Shape $key
+      (ref.as_non_null
+       (local.get $curr)
+      )
+     )
+     (local.get $key)
+    )
+    (then
+     (return
+      (struct.get $Shape $offset
+       (ref.as_non_null
+        (local.get $curr)
+       )
+      )
+     )
+    )
+   )
+   (local.set $curr
+    (struct.get $Shape $parent
+     (ref.as_non_null
+      (local.get $curr)
+     )
+    )
+   )
+   (br $search)
+  )
+  (i32.const -1)
+ )
+ (func $new_object (type $7) (param $shape (ref $Shape)) (param $size i32) (result (ref $Object))
+  (struct.new $Object
+   (local.get $shape)
+   (array.new_default $Storage
+    (local.get $size)
+   )
+  )
+ )
+ (func $set_storage (type $8) (param $obj (ref $Object)) (param $idx i32) (param $val anyref)
+  (array.set $Storage
+   (struct.get $Object $storage
+    (local.get $obj)
+   )
+   (local.get $idx)
+   (local.get $val)
+  )
+ )
+ (func $new_callsite (type $9) (result (ref $CallSite))
+  (struct.new $CallSite
+   (ref.null none)
+   (i32.const -1)
+  )
+ )
+ (func $get_field_slow (type $10) (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
+  (local $offset i32)
+  (local $shape (ref $Shape))
+  (local.set $shape
+   (struct.get $Object $shape
+    (local.get $obj)
+   )
+  )
+  (local.set $offset
+   (call $lookup_in_shape
+    (local.get $shape)
+    (local.get $key)
+   )
+  )
+  (if
+   (i32.ge_s
+    (local.get $offset)
+    (i32.const 0)
+   )
+   (then
+    (struct.set $CallSite $expected_shape
+     (local.get $cache)
+     (local.get $shape)
+    )
+    (struct.set $CallSite $offset
+     (local.get $cache)
+     (local.get $offset)
+    )
+    (return
+     (array.get $Storage
+      (struct.get $Object $storage
+       (local.get $obj)
+      )
+      (local.get $offset)
+     )
+    )
+   )
+  )
+  (ref.null none)
+ )
+ (func $get_field_cached (type $10) (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
   (if
    (ref.eq
     (struct.get $Object $shape
-     (local.get $0)
+     (local.get $obj)
     )
     (struct.get $CallSite $expected_shape
-     (local.get $1)
+     (local.get $cache)
     )
    )
    (then
     (return
      (array.get $Storage
       (struct.get $Object $storage
-       (local.get $0)
+       (local.get $obj)
       )
       (struct.get $CallSite $offset
-       (local.get $1)
+       (local.get $cache)
       )
      )
     )
    )
   )
-  (block $__inlined_func$get_field_slow$6 (result anyref)
-   (if
-    (i32.ge_s
-     (local.tee $3
-      (block $__inlined_func$lookup_in_shape (result i32)
-       (local.set $2
-        (ref.as_non_null
-         (local.tee $5
-          (struct.get $Object $shape
-           (local.tee $4
-            (local.get $0)
-           )
-          )
-         )
-        )
-       )
-       (loop $search (result i32)
-        (drop
-         (br_if $__inlined_func$lookup_in_shape
-          (i32.const -1)
-          (ref.is_null
-           (local.get $2)
-          )
-         )
-        )
-        (if (result i32)
-         (i32.eq
-          (struct.get $Shape $key
-           (local.get $2)
-          )
-          (i32.const 1)
-         )
-         (then
-          (struct.get $Shape $offset
-           (local.get $2)
-          )
-         )
-         (else
-          (local.set $2
-           (struct.get $Shape $parent
-            (local.get $2)
-           )
-          )
-          (br $search)
-         )
-        )
-       )
-      )
-     )
-     (i32.const 0)
-    )
-    (then
-     (struct.set $CallSite $expected_shape
-      (local.get $1)
-      (ref.as_non_null
-       (local.get $5)
-      )
-     )
-     (struct.set $CallSite $offset
-      (local.get $1)
-      (local.get $3)
-     )
-     (br $__inlined_func$get_field_slow$6
-      (array.get $Storage
-       (struct.get $Object $storage
-        (local.get $0)
-       )
-       (local.get $3)
-      )
-     )
-    )
-   )
-   (ref.null none)
+  (call $get_field_slow
+   (local.get $obj)
+   (local.get $cache)
+   (local.get $key)
   )
  )
- (func $main (type $4) (result i32)
-  (local $0 (ref (exact $Object)))
-  (local $1 (ref (exact $CallSite)))
-  (call $set_storage
-   (local.tee $0
-    (struct.new $Object
-     (struct.new $Shape
-      (struct.new $Shape
-       (struct.new $Shape
-        (ref.null none)
-        (i32.const -1)
-        (i32.const -1)
-       )
-       (i32.const 1)
-       (i32.const 0)
-      )
-      (i32.const 2)
-      (i32.const 1)
-     )
-     (array.new_default $Storage
-      (i32.const 2)
-     )
-    )
+ (func $main (type $11) (result i32)
+  (local $root (ref $Shape))
+  (local $shape_pt (ref $Shape))
+  (local $obj (ref $Object))
+  (local $cache (ref $CallSite))
+  (local $val anyref)
+  (local.set $root
+   (call $new_root_shape)
+  )
+  (local.set $shape_pt
+   (call $extend_shape
+    (local.get $root)
+    (i32.const 1)
+    (i32.const 0)
    )
+  )
+  (local.set $shape_pt
+   (call $extend_shape
+    (local.get $shape_pt)
+    (i32.const 2)
+    (i32.const 1)
+   )
+  )
+  (local.set $obj
+   (call $new_object
+    (local.get $shape_pt)
+    (i32.const 2)
+   )
+  )
+  (call $set_storage
+   (local.get $obj)
    (i32.const 0)
    (ref.i31
     (i32.const 10)
    )
   )
   (call $set_storage
-   (local.get $0)
+   (local.get $obj)
    (i32.const 1)
    (ref.i31
     (i32.const 20)
    )
   )
-  (drop
+  (local.set $cache
+   (call $new_callsite)
+  )
+  (local.set $val
    (call $get_field_cached
-    (local.get $0)
-    (local.tee $1
-     (struct.new $CallSite
-      (ref.null none)
-      (i32.const -1)
-     )
-    )
+    (local.get $obj)
+    (local.get $cache)
+    (i32.const 1)
+   )
+  )
+  (local.set $val
+   (call $get_field_cached
+    (local.get $obj)
+    (local.get $cache)
+    (i32.const 1)
    )
   )
   (i31.get_s
    (ref.cast i31ref
-    (call $get_field_cached
-     (local.get $0)
-     (local.get $1)
-    )
+    (local.get $val)
    )
   )
  )

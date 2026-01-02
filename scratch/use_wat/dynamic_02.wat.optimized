@@ -5,23 +5,29 @@
   (type $MethodSig (func (param (ref $Object)) (result anyref)))
   (type $Method (struct (field $func (ref $MethodSig))))
  )
- (type $4 (func (param (ref $Object) i32) (result (ref null $Entry))))
- (type $5 (func (param (ref $Object) i32) (result anyref)))
- (type $6 (func (result i32)))
- (type $7 (func (param (ref $Object) i32 (ref eq))))
+ (type $4 (func (result (ref $Object))))
+ (type $5 (func (param (ref $Object) i32) (result (ref null $Entry))))
+ (type $6 (func (param (ref $Object) i32 anyref)))
+ (type $7 (func (param (ref $Object) i32) (result anyref)))
+ (type $8 (func (result i32)))
  (elem declare func $get_x $sum_x_y)
  (export "main" (func $main))
- (func $find_entry (type $4) (param $0 (ref $Object)) (param $1 i32) (result (ref null $Entry))
-  (local $2 (ref null $Entry))
-  (local.set $2
+ (func $new_object (type $4) (result (ref $Object))
+  (struct.new $Object
+   (ref.null none)
+  )
+ )
+ (func $find_entry (type $5) (param $obj (ref $Object)) (param $key i32) (result (ref null $Entry))
+  (local $curr (ref null $Entry))
+  (local.set $curr
    (struct.get $Object $props
-    (local.get $0)
+    (local.get $obj)
    )
   )
-  (loop $search (result (ref null $Entry))
+  (loop $search
    (if
     (ref.is_null
-     (local.get $2)
+     (local.get $curr)
     )
     (then
      (return
@@ -29,68 +35,71 @@
      )
     )
    )
-   (if (result (ref null $Entry))
+   (if
     (i32.eq
      (struct.get $Entry $key
-      (local.get $2)
+      (local.get $curr)
      )
-     (local.get $1)
+     (local.get $key)
     )
     (then
-     (local.get $2)
-    )
-    (else
-     (local.set $2
-      (struct.get $Entry $next
-       (local.get $2)
-      )
+     (return
+      (local.get $curr)
      )
-     (br $search)
     )
    )
+   (local.set $curr
+    (struct.get $Entry $next
+     (local.get $curr)
+    )
+   )
+   (br $search)
   )
+  (ref.null none)
  )
- (func $set_field (type $7) (param $0 (ref $Object)) (param $1 i32) (param $2 (ref eq))
-  (local $3 (ref null $Entry))
+ (func $set_field (type $6) (param $obj (ref $Object)) (param $key i32) (param $val anyref)
+  (local $entry (ref null $Entry))
+  (local.set $entry
+   (call $find_entry
+    (local.get $obj)
+    (local.get $key)
+   )
+  )
   (if
    (ref.is_null
-    (local.tee $3
-     (call $find_entry
-      (local.get $0)
-      (local.get $1)
-     )
-    )
+    (local.get $entry)
    )
    (then
     (struct.set $Object $props
-     (local.get $0)
+     (local.get $obj)
      (struct.new $Entry
-      (local.get $1)
-      (local.get $2)
+      (local.get $key)
+      (local.get $val)
       (struct.get $Object $props
-       (local.get $0)
+       (local.get $obj)
       )
      )
     )
    )
    (else
     (struct.set $Entry $val
-     (local.get $3)
-     (local.get $2)
+     (local.get $entry)
+     (local.get $val)
     )
    )
   )
  )
- (func $get_field (type $5) (param $0 (ref $Object)) (param $1 i32) (result anyref)
-  (local $2 (ref null $Entry))
+ (func $get_field (type $7) (param $obj (ref $Object)) (param $key i32) (result anyref)
+  (local $entry (ref null $Entry))
+  (local.set $entry
+   (call $find_entry
+    (local.get $obj)
+    (local.get $key)
+   )
+  )
   (if
    (ref.is_null
-    (local.tee $2
-     (call $find_entry
-      (local.get $0)
-      (local.get $1)
-     )
-    )
+    (local.get $entry)
    )
    (then
     (return
@@ -99,90 +108,117 @@
    )
   )
   (struct.get $Entry $val
-   (local.get $2)
+   (local.get $entry)
   )
  )
- (func $get_x (type $MethodSig) (param $0 (ref $Object)) (result anyref)
+ (func $call_method (type $7) (param $obj (ref $Object)) (param $method_name i32) (result anyref)
+  (local $val anyref)
+  (local $method (ref null $Method))
+  (local.set $val
+   (call $get_field
+    (local.get $obj)
+    (local.get $method_name)
+   )
+  )
+  (local.set $method
+   (ref.cast (ref $Method)
+    (local.get $val)
+   )
+  )
+  (call_ref $MethodSig
+   (local.get $obj)
+   (struct.get $Method $func
+    (local.get $method)
+   )
+  )
+ )
+ (func $get_x (type $MethodSig) (param $self (ref $Object)) (result anyref)
   (call $get_field
-   (local.get $0)
+   (local.get $self)
    (i32.const 1)
   )
  )
- (func $sum_x_y (type $MethodSig) (param $0 (ref $Object)) (result anyref)
-  (local $1 anyref)
-  (local $2 anyref)
-  (local.set $1
+ (func $sum_x_y (type $MethodSig) (param $self (ref $Object)) (result anyref)
+  (local $x anyref)
+  (local $y anyref)
+  (local $x_val i32)
+  (local $y_val i32)
+  (local.set $x
    (call $get_field
-    (local.get $0)
+    (local.get $self)
     (i32.const 1)
    )
   )
-  (local.set $2
+  (local.set $y
    (call $get_field
-    (local.get $0)
+    (local.get $self)
     (i32.const 2)
+   )
+  )
+  (local.set $x_val
+   (i31.get_s
+    (ref.cast i31ref
+     (local.get $x)
+    )
+   )
+  )
+  (local.set $y_val
+   (i31.get_s
+    (ref.cast i31ref
+     (local.get $y)
+    )
    )
   )
   (ref.i31
    (i32.add
-    (i31.get_s
-     (ref.cast i31ref
-      (local.get $1)
-     )
-    )
-    (i31.get_s
-     (ref.cast i31ref
-      (local.get $2)
-     )
-    )
+    (local.get $x_val)
+    (local.get $y_val)
    )
   )
  )
- (func $main (type $6) (result i32)
-  (local $0 (ref (exact $Object)))
+ (func $main (type $8) (result i32)
+  (local $obj (ref $Object))
+  (local $res anyref)
+  (local.set $obj
+   (call $new_object)
+  )
   (call $set_field
-   (local.tee $0
-    (struct.new_default $Object)
-   )
+   (local.get $obj)
    (i32.const 1)
    (ref.i31
     (i32.const 10)
    )
   )
   (call $set_field
-   (local.get $0)
+   (local.get $obj)
    (i32.const 2)
    (ref.i31
     (i32.const 20)
    )
   )
   (call $set_field
-   (local.get $0)
+   (local.get $obj)
    (i32.const 3)
    (struct.new $Method
     (ref.func $get_x)
    )
   )
   (call $set_field
-   (local.get $0)
+   (local.get $obj)
    (i32.const 4)
    (struct.new $Method
     (ref.func $sum_x_y)
    )
   )
+  (local.set $res
+   (call $call_method
+    (local.get $obj)
+    (i32.const 4)
+   )
+  )
   (i31.get_s
    (ref.cast i31ref
-    (call_ref $MethodSig
-     (local.get $0)
-     (struct.get $Method $func
-      (ref.cast (ref $Method)
-       (call $get_field
-        (local.get $0)
-        (i32.const 4)
-       )
-      )
-     )
-    )
+    (local.get $res)
    )
   )
  )

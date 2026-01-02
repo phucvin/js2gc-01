@@ -30,13 +30,13 @@ async function run() {
             process.exit(1);
         }
 
-        console.log("Optimizing...");
-        module.optimize();
+        // console.log("Optimizing...");
+        // module.optimize();
 
         const optimizedWat = module.emitText();
         const optimizedPath = path.join(scratchDir, `${file}.optimized`);
         fs.writeFileSync(optimizedPath, optimizedWat);
-        console.log(`Optimized WAT written to ${optimizedPath}`);
+        console.log(`Round-tripped WAT written to ${optimizedPath}`);
 
         const binary = module.emitBinary();
 
