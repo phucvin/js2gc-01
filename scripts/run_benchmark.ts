@@ -20,7 +20,7 @@ async function runBenchmark(jsSource: string, file: string, enableIC: boolean): 
          return { duration: Infinity, output: "" };
     }
 
-    const watPath = path.join(benchmarkDir, `${file.replace('.js', '')}_${enableIC ? 'ic' : 'noic'}.wat`);
+    const watPath = path.join(benchmarkDir, `${file.replace('.js', '')}.${enableIC ? 'ic' : 'no_ic'}.wat`);
     fs.writeFileSync(watPath, watText);
 
     const module = binaryen.parseText(watText);
@@ -162,18 +162,23 @@ async function run() {
     const readmePath = path.join(projectRoot, 'README.md');
     let readme = fs.readFileSync(readmePath, 'utf-8');
 
-    // Replace existing benchmark section or append
     const benchHeader = "## Benchmark Results";
+
+    // Remove old benchmark output if it exists
     if (readme.includes(benchHeader)) {
-        // Find end of section? Assuming it goes until next header or end of file
         const startIndex = readme.indexOf(benchHeader);
         let endIndex = readme.indexOf("\n## ", startIndex + benchHeader.length);
         if (endIndex === -1) endIndex = readme.length;
 
-        readme = readme.substring(0, startIndex) + benchHeader + "\n\n" + report.replace("# Benchmark Results\n\n", "") + readme.substring(endIndex);
-    } else {
-        readme += "\n\n" + benchHeader + "\n\n" + report.replace("# Benchmark Results\n\n", "");
+        // Remove the old section entirely
+        readme = readme.substring(0, startIndex) + readme.substring(endIndex);
     }
+
+    // Trim trailing newlines to keep it clean
+    readme = readme.trimEnd();
+
+    // Append new report
+    readme += "\n\n" + benchHeader + "\n\n" + report.replace("# Benchmark Results\n\n", "");
 
     fs.writeFileSync(readmePath, readme);
     console.log("Updated README.md");
