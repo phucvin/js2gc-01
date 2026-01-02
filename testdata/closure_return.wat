@@ -29,7 +29,7 @@
   (ref.null none)
   (i32.const -1)
  ))
- (elem declare func $closure_0 $closure_1)
+ (elem declare func $closure_0)
  (export "main" (func $main))
  (func $new_root_shape (type $13) (result (ref $Shape))
   (struct.new $Shape
@@ -426,100 +426,7 @@
    )
   )
  )
- (func $main (type $20) (result anyref)
-  (local $user_makeAdder anyref)
-  (local $temp_0 (ref null $Object))
-  (local $user_add5 anyref)
-  (local $temp_1 (ref null $Closure))
-  (local $temp_2 (ref null $Closure))
-  (local.set $user_makeAdder
-   (block (result (ref $Closure))
-    (local.set $temp_0
-     (call $new_object
-      (call $new_root_shape)
-      (i32.const 0)
-     )
-    )
-    (struct.new $Closure
-     (ref.func $closure_1)
-     (ref.as_non_null
-      (local.get $temp_0)
-     )
-    )
-   )
-  )
-  (drop
-   (ref.null none)
-  )
-  (local.set $user_add5
-   (block (result anyref)
-    (local.set $temp_1
-     (ref.cast (ref $Closure)
-      (local.get $user_makeAdder)
-     )
-    )
-    (call_ref $ClosureSig1
-     (struct.get $Closure $env
-      (ref.as_non_null
-       (local.get $temp_1)
-      )
-     )
-     (ref.i31
-      (i32.const 5)
-     )
-     (ref.cast (ref $ClosureSig1)
-      (struct.get $Closure $func
-       (ref.as_non_null
-        (local.get $temp_1)
-       )
-      )
-     )
-    )
-   )
-  )
-  (drop
-   (ref.null none)
-  )
-  (call $console_log
-   (block (result anyref)
-    (local.set $temp_2
-     (ref.cast (ref $Closure)
-      (local.get $user_add5)
-     )
-    )
-    (call_ref $ClosureSig1
-     (struct.get $Closure $env
-      (ref.as_non_null
-       (local.get $temp_2)
-      )
-     )
-     (ref.i31
-      (i32.const 10)
-     )
-     (ref.cast (ref $ClosureSig1)
-      (struct.get $Closure $func
-       (ref.as_non_null
-        (local.get $temp_2)
-       )
-      )
-     )
-    )
-   )
-  )
- )
- (func $closure_0 (type $ClosureSig1) (param $env anyref) (param $user_y anyref) (result anyref)
-  (call $add
-   (call $get_field_cached
-    (ref.cast (ref $Object)
-     (local.get $env)
-    )
-    (global.get $site_0)
-    (i32.const 0)
-   )
-   (local.get $user_y)
-  )
- )
- (func $closure_1 (type $ClosureSig1) (param $env anyref) (param $user_x anyref) (result anyref)
+ (func $makeAdder (type $ClosureSig0) (param $user_x anyref) (result anyref)
   (local $temp_0 (ref null $Object))
   (return
    (block (result (ref $Closure))
@@ -547,6 +454,58 @@
      )
     )
    )
+  )
+ )
+ (func $main (type $20) (result anyref)
+  (local $user_add5 anyref)
+  (local $temp_0 (ref null $Closure))
+  (local.set $user_add5
+   (call $makeAdder
+    (ref.i31
+     (i32.const 5)
+    )
+   )
+  )
+  (drop
+   (ref.null none)
+  )
+  (call $console_log
+   (block (result anyref)
+    (local.set $temp_0
+     (ref.cast (ref $Closure)
+      (local.get $user_add5)
+     )
+    )
+    (call_ref $ClosureSig1
+     (struct.get $Closure $env
+      (ref.as_non_null
+       (local.get $temp_0)
+      )
+     )
+     (ref.i31
+      (i32.const 10)
+     )
+     (ref.cast (ref $ClosureSig1)
+      (struct.get $Closure $func
+       (ref.as_non_null
+        (local.get $temp_0)
+       )
+      )
+     )
+    )
+   )
+  )
+ )
+ (func $closure_0 (type $ClosureSig1) (param $env anyref) (param $user_y anyref) (result anyref)
+  (call $add
+   (call $get_field_cached
+    (ref.cast (ref $Object)
+     (local.get $env)
+    )
+    (global.get $site_0)
+    (i32.const 0)
+   )
+   (local.get $user_y)
   )
  )
 )
