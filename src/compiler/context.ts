@@ -1,5 +1,6 @@
 export const propertyMap: Map<string, number> = new Map();
 export const globalCallSites: string[] = [];
+export const binaryOpCallSites: string[] = [];
 export const generatedFunctions: string[] = [];
 
 export function getPropertyId(name: string): number {
@@ -15,11 +16,18 @@ export function resetPropertyMap() {
 
 export function resetGlobalCallSites() {
     globalCallSites.length = 0;
+    binaryOpCallSites.length = 0;
 }
 
 export function registerGlobalCallSite(): string {
     const name = `$site_${globalCallSites.length}`;
     globalCallSites.push(name);
+    return name;
+}
+
+export function registerBinaryOpCallSite(): string {
+    const name = `$site_bin_${binaryOpCallSites.length}`;
+    binaryOpCallSites.push(name);
     return name;
 }
 

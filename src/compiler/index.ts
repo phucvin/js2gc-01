@@ -1,7 +1,7 @@
 import ts from 'typescript';
 import binaryen from 'binaryen';
 import { compileFunction } from './function.ts';
-import { resetPropertyMap, resetGlobalCallSites, globalCallSites, generatedFunctions, resetGeneratedFunctions } from './context.ts';
+import { resetPropertyMap, resetGlobalCallSites, globalCallSites, generatedFunctions, resetGeneratedFunctions, binaryOpCallSites } from './context.ts';
 import { resetClosureCounter } from './expression.ts';
 
 export function compile(source: string): string {
@@ -52,6 +52,12 @@ export function compile(source: string): string {
       }
   }
 
+  if (binaryOpCallSites.length > 0) {
+      for (const siteName of binaryOpCallSites) {
+          globalsDecl += `(global ${siteName} (mut (ref $BinaryOpCallSite)) (struct.new $BinaryOpCallSite (i32.const 0) (i32.const 0) (ref.null $BinaryOpFunc)))\n`;
+      }
+  }
+
   // Define some closure types for call_ref
   const closureSigs = `
   (type $ClosureSig0 (func (param anyref) (result anyref)))
@@ -86,6 +92,14 @@ export function compile(source: string): string {
       (field $func funcref)
       (field $env anyref)
     ))
+
+    (type $BinaryOpFunc (func (param anyref) (param anyref) (result anyref)))
+
+    (type $BinaryOpCallSite (struct
+      (field $type_lhs (mut i32))
+      (field $type_rhs (mut i32))
+      (field $target (mut (ref null $BinaryOpFunc)))
+    ))
   )
 
   ${closureSigs}
@@ -96,6 +110,8 @@ export function compile(source: string): string {
   (import "env" "print_i32" (func $print_i32 (param i32)))
   (import "env" "print_f64" (func $print_f64 (param f64)))
   (import "env" "print_string" (func $print_string (param (ref string))))
+
+  (elem declare func $add_i32_i32 $add_f64_f64 $add_i32_f64 $add_f64_i32 $add_unsupported)
 
   ${globalsDecl}
 
@@ -264,6 +280,104 @@ export function compile(source: string): string {
       )
     )
     (ref.null any)
+  )
+
+  (func $get_type_id (param $val anyref) (result i32)
+      (if (ref.is_null (local.get $val)) (then (return (i32.const 0))))
+      (if (ref.test (ref i31) (local.get $val)) (then (return (i32.const 1))))
+      (if (ref.test (ref $BoxedF64) (local.get $val)) (then (return (i32.const 2))))
+      ;; 0 is unknown/null
+      (i32.const 0)
+  )
+
+  (func $add_i32_i32 (type $BinaryOpFunc)
+    (ref.i31 (i32.add
+        (i31.get_s (ref.cast (ref i31) (local.get 0)))
+        (i31.get_s (ref.cast (ref i31) (local.get 1)))
+    ))
+  )
+
+  (func $add_f64_f64 (type $BinaryOpFunc)
+    (struct.new $BoxedF64 (f64.add
+        (struct.get $BoxedF64 0 (ref.cast (ref $BoxedF64) (local.get 0)))
+        (struct.get $BoxedF64 0 (ref.cast (ref $BoxedF64) (local.get 1)))
+    ))
+  )
+
+  (func $add_i32_f64 (type $BinaryOpFunc)
+    (struct.new $BoxedF64 (f64.add
+        (f64.convert_i32_s (i31.get_s (ref.cast (ref i31) (local.get 0))))
+        (struct.get $BoxedF64 0 (ref.cast (ref $BoxedF64) (local.get 1)))
+    ))
+  )
+
+  (func $add_f64_i32 (type $BinaryOpFunc)
+    (struct.new $BoxedF64 (f64.add
+        (struct.get $BoxedF64 0 (ref.cast (ref $BoxedF64) (local.get 0)))
+        (f64.convert_i32_s (i31.get_s (ref.cast (ref i31) (local.get 1))))
+    ))
+  )
+
+  (func $add_unsupported (type $BinaryOpFunc)
+    (ref.null any)
+  )
+
+  (func $add_slow (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+      (local $t_lhs i32)
+      (local $t_rhs i32)
+      (local $target (ref null $BinaryOpFunc))
+
+      (local.set $t_lhs (call $get_type_id (local.get $lhs)))
+      (local.set $t_rhs (call $get_type_id (local.get $rhs)))
+
+      ;; Default to add_unsupported
+      (local.set $target (ref.func $add_unsupported))
+
+      (if (i32.eq (local.get $t_lhs) (i32.const 1)) ;; i31
+          (then
+              (if (i32.eq (local.get $t_rhs) (i32.const 1))
+                  (then (local.set $target (ref.func $add_i32_i32)))
+                  (else (if (i32.eq (local.get $t_rhs) (i32.const 2))
+                      (then (local.set $target (ref.func $add_i32_f64)))
+                  ))
+              )
+          )
+          (else (if (i32.eq (local.get $t_lhs) (i32.const 2)) ;; f64
+              (then
+                  (if (i32.eq (local.get $t_rhs) (i32.const 1))
+                      (then (local.set $target (ref.func $add_f64_i32)))
+                      (else (if (i32.eq (local.get $t_rhs) (i32.const 2))
+                          (then (local.set $target (ref.func $add_f64_f64)))
+                      ))
+                  )
+              )
+          ))
+      )
+
+      ;; Update cache
+      (struct.set $BinaryOpCallSite $type_lhs (local.get $cache) (local.get $t_lhs))
+      (struct.set $BinaryOpCallSite $type_rhs (local.get $cache) (local.get $t_rhs))
+      (struct.set $BinaryOpCallSite $target (local.get $cache) (local.get $target))
+
+      (call_ref $BinaryOpFunc (local.get $lhs) (local.get $rhs) (ref.as_non_null (local.get $target)))
+  )
+
+  (func $add_cached (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+      (if (result anyref) (i32.eq (call $get_type_id (local.get $lhs)) (struct.get $BinaryOpCallSite $type_lhs (local.get $cache)))
+          (then
+              (if (result anyref) (i32.eq (call $get_type_id (local.get $rhs)) (struct.get $BinaryOpCallSite $type_rhs (local.get $cache)))
+                  (then
+                       (call_ref $BinaryOpFunc (local.get $lhs) (local.get $rhs) (ref.as_non_null (struct.get $BinaryOpCallSite $target (local.get $cache))))
+                  )
+                  (else
+                       (call $add_slow (local.get $lhs) (local.get $rhs) (local.get $cache))
+                  )
+              )
+          )
+          (else
+              (call $add_slow (local.get $lhs) (local.get $rhs) (local.get $cache))
+          )
+      )
   )
 
   (func $add (param $lhs anyref) (param $rhs anyref) (result anyref)

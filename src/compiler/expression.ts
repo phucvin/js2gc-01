@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import { getPropertyId, CompilationContext, registerGlobalCallSite, registerGeneratedFunction } from './context.ts';
+import { getPropertyId, CompilationContext, registerGlobalCallSite, registerGeneratedFunction, registerBinaryOpCallSite } from './context.ts';
 import { compileBody } from './statement.ts';
 
 let closureCounter = 0;
@@ -199,7 +199,8 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
       if (expr.operatorToken.kind === ts.SyntaxKind.PlusToken) {
           const left = compileExpression(expr.left, ctx);
           const right = compileExpression(expr.right, ctx);
-          return `(call $add ${left} ${right})`;
+          const siteName = registerBinaryOpCallSite();
+          return `(call $add_cached ${left} ${right} (global.get ${siteName}))`;
       } else if (expr.operatorToken.kind === ts.SyntaxKind.LessThanToken) {
           const left = compileExpression(expr.left, ctx);
           const right = compileExpression(expr.right, ctx);
@@ -243,19 +244,26 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
 
               if (res.type === 'local') {
                   const tempLocal = ctx.getTempLocal('anyref');
+                  // Postfix increment is essentially (x++), so we need to add 1.
+                  // Since we updated $add to be cached, we should use the cached version here too or a direct call.
+                  // For simplicity, let's use the cached version to benefit from optimization.
+                  // But wait, constructing AST for 'add' is hard here since we are emitting WAT directly.
+                  // We can just call $add_cached with a new site.
+                  const siteName = registerBinaryOpCallSite();
                   return `(block (result anyref)
                       (local.set ${tempLocal} (local.get ${localName}))
-                      (local.set ${localName} (call $add (local.get ${tempLocal}) (ref.i31 (i32.const 1))))
+                      (local.set ${localName} (call $add_cached (local.get ${tempLocal}) (ref.i31 (i32.const 1)) (global.get ${siteName})))
                       (local.get ${tempLocal})
                   )`;
               } else {
                   const tempLocal = ctx.getTempLocal('anyref');
                   const keyId = getPropertyId(localName);
                   const envGet = `(call $get_field_slow (ref.cast (ref $Object) (local.get $env)) (global.get ${registerGlobalCallSite()}) (i32.const ${keyId}))`;
+                  const siteName = registerBinaryOpCallSite();
                   return `(block (result anyref)
                        (local.set ${tempLocal} ${envGet})
                        (call $put_field (ref.cast (ref $Object) (local.get $env)) (i32.const ${keyId})
-                            (call $add (local.get ${tempLocal}) (ref.i31 (i32.const 1))))
+                            (call $add_cached (local.get ${tempLocal}) (ref.i31 (i32.const 1)) (global.get ${siteName})))
                        (drop)
                        (local.get ${tempLocal})
                   )`;
