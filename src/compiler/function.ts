@@ -1,8 +1,8 @@
 import ts from 'typescript';
 import { compileBody } from './statement.ts';
-import { CompilationContext } from './context.ts';
+import { CompilationContext, type CompilerOptions } from './context.ts';
 
-export function compileFunction(func: ts.FunctionDeclaration): string {
+export function compileFunction(func: ts.FunctionDeclaration, options?: CompilerOptions): string {
     const name = func.name!.text;
     const isMain = name === 'main';
     const isTest = name === 'test';
@@ -10,7 +10,7 @@ export function compileFunction(func: ts.FunctionDeclaration): string {
     if (isMain) exportClause = '(export "main")';
     if (isTest) exportClause = '(export "test")';
 
-    const ctx = new CompilationContext();
+    const ctx = new CompilationContext(options);
 
     // Scan parameters to add to locals
     func.parameters.forEach(param => {

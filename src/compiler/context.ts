@@ -39,14 +39,24 @@ export function resetGeneratedFunctions() {
     generatedFunctions.length = 0;
 }
 
+export interface CompilerOptions {
+    enableInlineCache?: boolean;
+}
+
 export class CompilationContext {
     private locals: Map<string, string> = new Map();
     private tempCounter: number = 0;
     private parent?: CompilationContext;
     private captured: Set<string> = new Set();
+    private options: CompilerOptions;
 
-    constructor(parent?: CompilationContext) {
-        this.parent = parent;
+    constructor(parentOrOptions?: CompilationContext | CompilerOptions) {
+        if (parentOrOptions instanceof CompilationContext) {
+            this.parent = parentOrOptions;
+            this.options = this.parent.options;
+        } else {
+            this.options = (parentOrOptions as CompilerOptions) || {};
+        }
     }
 
     addLocal(name: string, type: string) {
@@ -91,5 +101,9 @@ export class CompilationContext {
 
     getCapturedVars(): string[] {
         return Array.from(this.captured);
+    }
+
+    getOptions(): CompilerOptions {
+        return this.options;
     }
 }

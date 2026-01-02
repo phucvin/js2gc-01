@@ -1,10 +1,19 @@
 import ts from 'typescript';
 import binaryen from 'binaryen';
 import { compileFunction } from './function.ts';
-import { resetPropertyMap, resetGlobalCallSites, globalCallSites, generatedFunctions, resetGeneratedFunctions, binaryOpCallSites } from './context.ts';
+import { resetPropertyMap, resetGlobalCallSites, globalCallSites, generatedFunctions, resetGeneratedFunctions, binaryOpCallSites, type CompilerOptions } from './context.ts';
 import { resetClosureCounter } from './expression.ts';
 
-export function compile(source: string): string {
+// Export for other files to use if needed
+export type { CompilerOptions };
+
+export function compile(source: string, options?: CompilerOptions): string {
+  // Default options
+  const compilerOptions: CompilerOptions = {
+      enableInlineCache: true,
+      ...options
+  };
+
   resetPropertyMap();
   resetGlobalCallSites();
   resetGeneratedFunctions();
@@ -35,7 +44,7 @@ export function compile(source: string): string {
   let wasmFuncs = '';
 
   for (const func of functions) {
-    wasmFuncs += compileFunction(func);
+    wasmFuncs += compileFunction(func, compilerOptions);
   }
 
   // Append generated closure functions

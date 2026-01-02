@@ -49,7 +49,25 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
         if (lookup.type === 'local') {
             valCode = `(local.get ${varName})`;
         } else if (lookup.type === 'captured') {
-             valCode = `(call $get_field_slow (local.get $env) (global.get ${registerGlobalCallSite()}) (i32.const ${getPropertyId(varName)}))`;
+             // Access captured variable from current environment
+             // We can respect options here too, but captured vars are internal implementation details mostly.
+             // However, get_field_slow vs cached could be relevant.
+             // But for captured vars, we know the shape is immutable/fixed for closures? No, closures use $Object.
+             // But the environment object shape is constructed right there.
+             // The environment object IS an $Object.
+             // Is it worth optimizing env access? Probably yes.
+             // If options.enableInlineCache is false, we should use slow path.
+
+             const options = ctx.getOptions();
+             const cacheGlobal = registerGlobalCallSite();
+             const keyId = getPropertyId(varName);
+
+             if (options.enableInlineCache !== false) {
+                 valCode = `(call $get_field_cached (local.get $env) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
+             } else {
+                 valCode = `(call $get_field_slow (local.get $env) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
+             }
+
         } else {
              throw new Error(`Captured variable ${varName} not found in scope`);
         }
@@ -91,6 +109,9 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
 }
 
 export function compileExpression(expr: ts.Expression, ctx: CompilationContext): string {
+  const options = ctx.getOptions();
+  const enableIC = options.enableInlineCache !== false;
+
   if (ts.isNumericLiteral(expr)) {
       const val = Number(expr.text);
       const minI31 = -1073741824;
@@ -200,12 +221,20 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
           const left = compileExpression(expr.left, ctx);
           const right = compileExpression(expr.right, ctx);
           const siteName = registerBinaryOpCallSite();
-          return `(call $add_cached ${left} ${right} (global.get ${siteName}))`;
+          if (enableIC) {
+              return `(call $add_cached ${left} ${right} (global.get ${siteName}))`;
+          } else {
+              return `(call $add_slow ${left} ${right} (global.get ${siteName}))`;
+          }
       } else if (expr.operatorToken.kind === ts.SyntaxKind.MinusToken) {
           const left = compileExpression(expr.left, ctx);
           const right = compileExpression(expr.right, ctx);
           const siteName = registerBinaryOpCallSite();
-          return `(call $sub_cached ${left} ${right} (global.get ${siteName}))`;
+          if (enableIC) {
+              return `(call $sub_cached ${left} ${right} (global.get ${siteName}))`;
+          } else {
+              return `(call $sub_slow ${left} ${right} (global.get ${siteName}))`;
+          }
       } else if (expr.operatorToken.kind === ts.SyntaxKind.LessThanToken) {
           const left = compileExpression(expr.left, ctx);
           const right = compileExpression(expr.right, ctx);
@@ -249,26 +278,38 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
 
               if (res.type === 'local') {
                   const tempLocal = ctx.getTempLocal('anyref');
-                  // Postfix increment is essentially (x++), so we need to add 1.
-                  // Since we updated $add to be cached, we should use the cached version here too or a direct call.
-                  // For simplicity, let's use the cached version to benefit from optimization.
-                  // But wait, constructing AST for 'add' is hard here since we are emitting WAT directly.
-                  // We can just call $add_cached with a new site.
                   const siteName = registerBinaryOpCallSite();
+                  const addCall = enableIC
+                      ? `(call $add_cached (local.get ${tempLocal}) (ref.i31 (i32.const 1)) (global.get ${siteName}))`
+                      : `(call $add_slow (local.get ${tempLocal}) (ref.i31 (i32.const 1)) (global.get ${siteName}))`;
+
                   return `(block (result anyref)
                       (local.set ${tempLocal} (local.get ${localName}))
-                      (local.set ${localName} (call $add_cached (local.get ${tempLocal}) (ref.i31 (i32.const 1)) (global.get ${siteName})))
+                      (local.set ${localName} ${addCall})
                       (local.get ${tempLocal})
                   )`;
               } else {
                   const tempLocal = ctx.getTempLocal('anyref');
                   const keyId = getPropertyId(localName);
-                  const envGet = `(call $get_field_slow (ref.cast (ref $Object) (local.get $env)) (global.get ${registerGlobalCallSite()}) (i32.const ${keyId}))`;
+                  // Captured access also needs to respect IC option?
+                  // Earlier I implemented env access logic in compileFunctionExpression.
+                  // But here it's accessing captured var in PostfixUnary.
+                  // Wait, compileExpression for Identifier handles captured access.
+                  // But PostfixUnary manually generates get/set.
+
+                  const cacheGlobalGet = registerGlobalCallSite();
+                  const envGet = enableIC
+                      ? `(call $get_field_cached (ref.cast (ref $Object) (local.get $env)) (global.get ${cacheGlobalGet}) (i32.const ${keyId}))`
+                      : `(call $get_field_slow (ref.cast (ref $Object) (local.get $env)) (global.get ${cacheGlobalGet}) (i32.const ${keyId}))`;
+
                   const siteName = registerBinaryOpCallSite();
+                  const addCall = enableIC
+                      ? `(call $add_cached (local.get ${tempLocal}) (ref.i31 (i32.const 1)) (global.get ${siteName}))`
+                      : `(call $add_slow (local.get ${tempLocal}) (ref.i31 (i32.const 1)) (global.get ${siteName}))`;
+
                   return `(block (result anyref)
                        (local.set ${tempLocal} ${envGet})
-                       (call $put_field (ref.cast (ref $Object) (local.get $env)) (i32.const ${keyId})
-                            (call $add_cached (local.get ${tempLocal}) (ref.i31 (i32.const 1)) (global.get ${siteName})))
+                       (call $put_field (ref.cast (ref $Object) (local.get $env)) (i32.const ${keyId}) ${addCall})
                        (drop)
                        (local.get ${tempLocal})
                   )`;
@@ -280,7 +321,11 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
           const keyId = getPropertyId(expr.name.text);
           const objCode = compileExpression(expr.expression, ctx);
           const cacheGlobal = registerGlobalCallSite();
-          return `(call $get_field_cached (ref.cast (ref $Object) ${objCode}) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
+          if (enableIC) {
+              return `(call $get_field_cached (ref.cast (ref $Object) ${objCode}) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
+          } else {
+              return `(call $get_field_slow (ref.cast (ref $Object) ${objCode}) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
+          }
       }
   } else if (ts.isIdentifier(expr)) {
       const varName = expr.text;
@@ -293,7 +338,11 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
       } else if (res.type === 'captured') {
           const keyId = getPropertyId(localName);
           const cacheGlobal = registerGlobalCallSite();
-          return `(call $get_field_cached (ref.cast (ref $Object) (local.get $env)) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
+          if (enableIC) {
+              return `(call $get_field_cached (ref.cast (ref $Object) (local.get $env)) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
+          } else {
+              return `(call $get_field_slow (ref.cast (ref $Object) (local.get $env)) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
+          }
       }
 
       throw new Error(`Unknown identifier: ${varName}`);
