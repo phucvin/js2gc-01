@@ -327,39 +327,30 @@
  )
  (func $add_cached (type $15) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
   (if (result anyref)
-   (i32.eq
-    (call $get_type_id
-     (local.get $lhs)
+   (i32.and
+    (i32.eq
+     (call $get_type_id
+      (local.get $lhs)
+     )
+     (struct.get $BinaryOpCallSite $type_lhs
+      (local.get $cache)
+     )
     )
-    (struct.get $BinaryOpCallSite $type_lhs
-     (local.get $cache)
+    (i32.eq
+     (call $get_type_id
+      (local.get $rhs)
+     )
+     (struct.get $BinaryOpCallSite $type_rhs
+      (local.get $cache)
+     )
     )
    )
    (then
-    (if (result anyref)
-     (i32.eq
-      (call $get_type_id
-       (local.get $rhs)
-      )
-      (struct.get $BinaryOpCallSite $type_rhs
-       (local.get $cache)
-      )
-     )
-     (then
-      (call_ref $BinaryOpFunc
-       (local.get $lhs)
-       (local.get $rhs)
-       (ref.as_non_null
-        (struct.get $BinaryOpCallSite $target
-         (local.get $cache)
-        )
-       )
-      )
-     )
-     (else
-      (call $add_slow
-       (local.get $lhs)
-       (local.get $rhs)
+    (call_ref $BinaryOpFunc
+     (local.get $lhs)
+     (local.get $rhs)
+     (ref.as_non_null
+      (struct.get $BinaryOpCallSite $target
        (local.get $cache)
       )
      )
