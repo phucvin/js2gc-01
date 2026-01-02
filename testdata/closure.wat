@@ -25,8 +25,12 @@
  (import "env" "print_i32" (func $print_i32 (type $10) (param i32)))
  (import "env" "print_f64" (func $print_f64 (type $11) (param f64)))
  (import "env" "print_string" (func $print_string (type $12) (param (ref string))))
+ (global $site_0 (mut (ref $CallSite)) (struct.new $CallSite
+  (ref.null none)
+  (i32.const -1)
+ ))
+ (elem declare func $closure_0)
  (export "main" (func $main))
- (export "test" (func $test))
  (func $new_root_shape (type $13) (result (ref $Shape))
   (struct.new $Shape
    (ref.null none)
@@ -423,20 +427,92 @@
   )
  )
  (func $main (type $20) (result anyref)
-  (return
-   (call $add
-    (ref.i31
-     (i32.const 10)
+  (local $user_x anyref)
+  (local $user_f anyref)
+  (local $temp_0 (ref null $Object))
+  (local $user_res anyref)
+  (local $temp_1 (ref null $Closure))
+  (local.set $user_x
+   (ref.i31
+    (i32.const 10)
+   )
+  )
+  (drop
+   (ref.null none)
+  )
+  (local.set $user_f
+   (block (result (ref $Closure))
+    (local.set $temp_0
+     (call $new_object
+      (call $extend_shape
+       (call $new_root_shape)
+       (i32.const 0)
+       (i32.const 0)
+      )
+      (i32.const 1)
+     )
     )
-    (struct.new $BoxedString
-     (string.const "hello")
+    (call $set_storage
+     (ref.as_non_null
+      (local.get $temp_0)
+     )
+     (i32.const 0)
+     (local.get $user_x)
+    )
+    (struct.new $Closure
+     (ref.func $closure_0)
+     (ref.as_non_null
+      (local.get $temp_0)
+     )
     )
    )
   )
- )
- (func $test (type $20) (result anyref)
+  (drop
+   (ref.null none)
+  )
+  (local.set $user_res
+   (block (result anyref)
+    (local.set $temp_1
+     (ref.cast (ref $Closure)
+      (local.get $user_f)
+     )
+    )
+    (call_ref $ClosureSig1
+     (struct.get $Closure $env
+      (ref.as_non_null
+       (local.get $temp_1)
+      )
+     )
+     (ref.i31
+      (i32.const 20)
+     )
+     (ref.cast (ref $ClosureSig1)
+      (struct.get $Closure $func
+       (ref.as_non_null
+        (local.get $temp_1)
+       )
+      )
+     )
+    )
+   )
+  )
+  (drop
+   (ref.null none)
+  )
   (call $console_log
-   (call $main)
+   (local.get $user_res)
+  )
+ )
+ (func $closure_0 (type $ClosureSig1) (param $env anyref) (param $user_y anyref) (result anyref)
+  (call $add
+   (call $get_field_cached
+    (ref.cast (ref $Object)
+     (local.get $env)
+    )
+    (global.get $site_0)
+    (i32.const 0)
+   )
+   (local.get $user_y)
   )
  )
 )

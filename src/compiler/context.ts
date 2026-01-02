@@ -1,5 +1,6 @@
 export const propertyMap: Map<string, number> = new Map();
 export const globalCallSites: string[] = [];
+export const generatedFunctions: string[] = [];
 
 export function getPropertyId(name: string): number {
     if (!propertyMap.has(name)) {
@@ -22,9 +23,23 @@ export function registerGlobalCallSite(): string {
     return name;
 }
 
+export function registerGeneratedFunction(code: string) {
+    generatedFunctions.push(code);
+}
+
+export function resetGeneratedFunctions() {
+    generatedFunctions.length = 0;
+}
+
 export class CompilationContext {
     private locals: Map<string, string> = new Map();
     private tempCounter: number = 0;
+    private parent?: CompilationContext;
+    private captured: Set<string> = new Set();
+
+    constructor(parent?: CompilationContext) {
+        this.parent = parent;
+    }
 
     addLocal(name: string, type: string) {
         this.locals.set(name, type);
@@ -50,5 +65,23 @@ export class CompilationContext {
 
     updateLocalType(name: string, type: string) {
         this.locals.set(name, type);
+    }
+
+    lookup(name: string): { type: 'local' | 'captured' | 'global', typeName?: string } {
+        if (this.locals.has(name)) {
+            return { type: 'local', typeName: this.locals.get(name) };
+        }
+        if (this.parent) {
+            const res = this.parent.lookup(name);
+            if (res.type === 'local' || res.type === 'captured') {
+                this.captured.add(name);
+                return { type: 'captured', typeName: 'anyref' };
+            }
+        }
+        return { type: 'global' };
+    }
+
+    getCapturedVars(): string[] {
+        return Array.from(this.captured);
     }
 }

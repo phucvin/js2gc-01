@@ -1,5 +1,94 @@
 import ts from 'typescript';
-import { getPropertyId, CompilationContext, registerGlobalCallSite } from './context.ts';
+import { getPropertyId, CompilationContext, registerGlobalCallSite, registerGeneratedFunction } from './context.ts';
+import { compileBody } from './statement.ts';
+
+let closureCounter = 0;
+
+function resetClosureCounter() {
+    closureCounter = 0;
+}
+
+// Export reset for index.ts to call
+export { resetClosureCounter };
+
+function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunction, ctx: CompilationContext): string {
+    const closureCtx = new CompilationContext(ctx);
+
+    // Scan parameters to add to locals
+    node.parameters.forEach(param => {
+        if (ts.isIdentifier(param.name)) {
+            closureCtx.addLocal(`$user_${param.name.text}`, 'anyref');
+        }
+    });
+
+    let bodyCode = '';
+    if (ts.isBlock(node.body)) {
+        bodyCode = compileBody(node.body, closureCtx);
+    } else {
+        const exprCode = compileExpression(node.body, closureCtx);
+        bodyCode = exprCode;
+    }
+
+    const capturedVars = closureCtx.getCapturedVars();
+
+    let envCreationCode = `(call $new_root_shape)`;
+    let offset = 0;
+    for (const varName of capturedVars) {
+        const keyId = getPropertyId(varName);
+        envCreationCode = `(call $extend_shape ${envCreationCode} (i32.const ${keyId}) (i32.const ${offset}))`;
+        offset++;
+    }
+
+    const envLocal = ctx.getTempLocal('(ref null $Object)');
+    let envSetupCode = `(local.set ${envLocal} (call $new_object ${envCreationCode} (i32.const ${offset})))\n`;
+
+    offset = 0;
+    for (const varName of capturedVars) {
+        const lookup = ctx.lookup(varName);
+        let valCode = '';
+        if (lookup.type === 'local') {
+            valCode = `(local.get ${varName})`;
+        } else if (lookup.type === 'captured') {
+             valCode = `(call $get_field_slow (local.get $env) (global.get ${registerGlobalCallSite()}) (i32.const ${getPropertyId(varName)}))`;
+        } else {
+             throw new Error(`Captured variable ${varName} not found in scope`);
+        }
+
+        envSetupCode += `(call $set_storage (ref.as_non_null (local.get ${envLocal})) (i32.const ${offset}) ${valCode})\n`;
+        offset++;
+    }
+
+    const funcName = `closure_${closureCounter++}`;
+
+    let paramsDecl = '(param $env anyref)';
+    node.parameters.forEach(param => {
+         if (ts.isIdentifier(param.name)) {
+             paramsDecl += ` (param $user_${param.name.text} anyref)`;
+         }
+    });
+
+    let localsDecl = '';
+    closureCtx.getLocals().forEach((type, name) => {
+        const isParam = node.parameters.some(p => ts.isIdentifier(p.name) && `$user_${p.name.text}` === name);
+        if (!isParam) {
+            localsDecl += `(local ${name} ${type})\n`;
+        }
+    });
+
+    const funcWat = `
+    (func $${funcName} ${paramsDecl} (result anyref)
+       ${localsDecl}
+       ${bodyCode}
+    )`;
+
+    registerGeneratedFunction(funcWat);
+    registerGeneratedFunction(`(elem declare func $${funcName})`);
+
+    return `(block (result (ref $Closure))
+        ${envSetupCode}
+        (struct.new $Closure (ref.func $${funcName}) (ref.as_non_null (local.get ${envLocal})))
+    )`;
+}
 
 export function compileExpression(expr: ts.Expression, ctx: CompilationContext): string {
   if (ts.isNumericLiteral(expr)) {
@@ -19,8 +108,6 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
   } else if (ts.isStringLiteral(expr)) {
     return `(struct.new $BoxedString (string.const "${expr.text}"))`;
   } else if (ts.isObjectLiteralExpression(expr)) {
-      // 1. Construct shape
-      // (call $extend_shape (call $extend_shape (call $new_root_shape) key1 0) key2 1)
       let shapeCode = `(call $new_root_shape)`;
       let offset = 0;
       for (const prop of expr.properties) {
@@ -31,10 +118,8 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
           }
       }
 
-      // 2. Create object and store in temp local
       const objLocal = ctx.getTempLocal('(ref null $Object)');
 
-      // 3. Set properties
       let setPropsCode = '';
       offset = 0;
       for (const prop of expr.properties) {
@@ -45,7 +130,6 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
           }
       }
 
-      // Combine: set local, set props, return local
       return `(block (result (ref $Object))
          (local.set ${objLocal} (call $new_object ${shapeCode} (i32.const ${offset})))
          ${setPropsCode}
@@ -55,7 +139,31 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
   } else if (ts.isCallExpression(expr)) {
       if (ts.isIdentifier(expr.expression)) {
           const funcName = expr.expression.text;
-          return `(call $${funcName})`;
+          const lookup = ctx.lookup(`$user_${funcName}`);
+
+          if (lookup.type === 'local' || lookup.type === 'captured') {
+               const closureExpr = compileExpression(expr.expression, ctx);
+               const args = expr.arguments.map(arg => compileExpression(arg, ctx));
+
+               const closureLocal = ctx.getTempLocal('(ref null $Closure)');
+               const sigName = `$ClosureSig${args.length}`;
+
+               let argsCode = '';
+               args.forEach(argCode => {
+                   argsCode += argCode + ' ';
+               });
+
+               return `(block (result anyref)
+                   (local.set ${closureLocal} (ref.cast (ref $Closure) ${closureExpr}))
+                   (call_ref ${sigName}
+                       (struct.get $Closure $env (ref.as_non_null (local.get ${closureLocal})))
+                       ${argsCode}
+                       (ref.cast (ref ${sigName}) (struct.get $Closure $func (ref.as_non_null (local.get ${closureLocal}))))
+                   )
+               )`;
+          } else {
+             return `(call $${funcName} ${expr.arguments.map(a => compileExpression(a, ctx)).join(' ')})`;
+          }
       } else if (ts.isPropertyAccessExpression(expr.expression) &&
                  ts.isIdentifier(expr.expression.expression) &&
                  expr.expression.expression.text === 'console' &&
@@ -66,6 +174,26 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
           } else {
               return `(ref.null any)`;
           }
+      } else {
+          // Indirect call
+          const closureExpr = compileExpression(expr.expression, ctx);
+          const args = expr.arguments.map(arg => compileExpression(arg, ctx));
+          const closureLocal = ctx.getTempLocal('(ref null $Closure)');
+          const sigName = `$ClosureSig${args.length}`;
+
+          let argsCode = '';
+          args.forEach(argCode => {
+               argsCode += argCode + ' ';
+          });
+
+          return `(block (result anyref)
+              (local.set ${closureLocal} (ref.cast (ref $Closure) ${closureExpr}))
+              (call_ref ${sigName}
+                   (struct.get $Closure $env (ref.as_non_null (local.get ${closureLocal})))
+                   ${argsCode}
+                   (ref.cast (ref ${sigName}) (struct.get $Closure $func (ref.as_non_null (local.get ${closureLocal}))))
+               )
+          )`;
       }
   } else if (ts.isBinaryExpression(expr)) {
       if (expr.operatorToken.kind === ts.SyntaxKind.PlusToken) {
@@ -77,15 +205,23 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
           const right = compileExpression(expr.right, ctx);
           return `(call $less_than ${left} ${right})`;
       } else if (expr.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
-          // Assignment
           if (ts.isIdentifier(expr.left)) {
               const varName = expr.left.text;
               const localName = `$user_${varName}`;
-              if (!ctx.hasLocal(localName)) {
-                  throw new Error(`Variable ${varName} not declared`);
+
+              const res = ctx.lookup(localName);
+              if (res.type === 'global') {
+                   throw new Error(`Variable ${varName} not declared`);
               }
+
               const right = compileExpression(expr.right, ctx);
-              return `(local.tee ${localName} ${right})`;
+
+              if (res.type === 'local') {
+                   return `(local.tee ${localName} ${right})`;
+              } else {
+                   const keyId = getPropertyId(localName);
+                   return `(call $put_field (ref.cast (ref $Object) (local.get $env)) (i32.const ${keyId}) ${right})`;
+              }
           } else if (ts.isPropertyAccessExpression(expr.left)) {
               if (ts.isIdentifier(expr.left.name)) {
                   const keyId = getPropertyId(expr.left.name.text);
@@ -100,35 +236,56 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
           if (ts.isIdentifier(expr.operand)) {
               const varName = expr.operand.text;
               const localName = `$user_${varName}`;
-              if (!ctx.hasLocal(localName)) {
+              const res = ctx.lookup(localName);
+              if (res.type === 'global') {
                   throw new Error(`Variable ${varName} not declared`);
               }
-              const tempLocal = ctx.getTempLocal('anyref');
-              return `(block (result anyref)
-                  (local.set ${tempLocal} (local.get ${localName}))
-                  (local.set ${localName} (call $add (local.get ${tempLocal}) (ref.i31 (i32.const 1))))
-                  (local.get ${tempLocal})
-              )`;
+
+              if (res.type === 'local') {
+                  const tempLocal = ctx.getTempLocal('anyref');
+                  return `(block (result anyref)
+                      (local.set ${tempLocal} (local.get ${localName}))
+                      (local.set ${localName} (call $add (local.get ${tempLocal}) (ref.i31 (i32.const 1))))
+                      (local.get ${tempLocal})
+                  )`;
+              } else {
+                  const tempLocal = ctx.getTempLocal('anyref');
+                  const keyId = getPropertyId(localName);
+                  const envGet = `(call $get_field_slow (ref.cast (ref $Object) (local.get $env)) (global.get ${registerGlobalCallSite()}) (i32.const ${keyId}))`;
+                  return `(block (result anyref)
+                       (local.set ${tempLocal} ${envGet})
+                       (call $put_field (ref.cast (ref $Object) (local.get $env)) (i32.const ${keyId})
+                            (call $add (local.get ${tempLocal}) (ref.i31 (i32.const 1))))
+                       (drop)
+                       (local.get ${tempLocal})
+                  )`;
+              }
           }
       }
   } else if (ts.isPropertyAccessExpression(expr)) {
       if (ts.isIdentifier(expr.name)) {
           const keyId = getPropertyId(expr.name.text);
           const objCode = compileExpression(expr.expression, ctx);
-
-          // Use a global variable for the inline cache site
           const cacheGlobal = registerGlobalCallSite();
-
-          // Since the global is initialized at startup, we can assume it's non-null.
           return `(call $get_field_cached (ref.cast (ref $Object) ${objCode}) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
       }
   } else if (ts.isIdentifier(expr)) {
       const varName = expr.text;
       const localName = `$user_${varName}`;
-      if (ctx.hasLocal(localName)) {
+
+      const res = ctx.lookup(localName);
+
+      if (res.type === 'local') {
           return `(local.get ${localName})`;
+      } else if (res.type === 'captured') {
+          const keyId = getPropertyId(localName);
+          const cacheGlobal = registerGlobalCallSite();
+          return `(call $get_field_cached (ref.cast (ref $Object) (local.get $env)) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
       }
+
       throw new Error(`Unknown identifier: ${varName}`);
+  } else if (ts.isArrowFunction(expr) || ts.isFunctionExpression(expr)) {
+      return compileFunctionExpression(expr, ctx);
   }
 
   throw new Error(`Unsupported expression kind: ${ts.SyntaxKind[expr.kind]}`);
