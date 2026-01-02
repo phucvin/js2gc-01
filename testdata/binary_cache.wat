@@ -29,9 +29,38 @@
  (import "env" "print_i32" (func $print_i32 (type $12) (param i32)))
  (import "env" "print_f64" (func $print_f64 (type $13) (param f64)))
  (import "env" "print_string" (func $print_string (type $14) (param (ref string))))
+ (global $site_bin_0 (mut (ref $BinaryOpCallSite)) (struct.new $BinaryOpCallSite
+  (i32.const 0)
+  (i32.const 0)
+  (ref.null nofunc)
+ ))
+ (global $site_bin_1 (mut (ref $BinaryOpCallSite)) (struct.new $BinaryOpCallSite
+  (i32.const 0)
+  (i32.const 0)
+  (ref.null nofunc)
+ ))
+ (global $site_bin_2 (mut (ref $BinaryOpCallSite)) (struct.new $BinaryOpCallSite
+  (i32.const 0)
+  (i32.const 0)
+  (ref.null nofunc)
+ ))
+ (global $site_bin_3 (mut (ref $BinaryOpCallSite)) (struct.new $BinaryOpCallSite
+  (i32.const 0)
+  (i32.const 0)
+  (ref.null nofunc)
+ ))
+ (global $site_bin_4 (mut (ref $BinaryOpCallSite)) (struct.new $BinaryOpCallSite
+  (i32.const 0)
+  (i32.const 0)
+  (ref.null nofunc)
+ ))
+ (global $site_bin_5 (mut (ref $BinaryOpCallSite)) (struct.new $BinaryOpCallSite
+  (i32.const 0)
+  (i32.const 0)
+  (ref.null nofunc)
+ ))
  (elem declare func $add_f64_f64 $add_f64_i32 $add_i32_f64 $add_i32_i32 $add_unsupported)
  (export "main" (func $main))
- (export "test" (func $test))
  (func $new_root_shape (type $15) (result (ref $Shape))
   (struct.new $Shape
    (ref.null none)
@@ -684,15 +713,181 @@
   )
  )
  (func $main (type $24) (result anyref)
-  (return
+  (local $user_a anyref)
+  (local $user_b anyref)
+  (local $user_c anyref)
+  (local $user_d anyref)
+  (local $user_e anyref)
+  (local $user_f anyref)
+  (local $user_g anyref)
+  (local $user_h anyref)
+  (local $user_i anyref)
+  (local $user_sum anyref)
+  (local $user_j anyref)
+  (local $temp_0 anyref)
+  (local.set $user_a
    (ref.i31
-    (i32.const 42)
+    (i32.const 10)
    )
   )
- )
- (func $test (type $24) (result anyref)
+  (drop
+   (ref.null none)
+  )
+  (local.set $user_b
+   (ref.i31
+    (i32.const 20)
+   )
+  )
+  (drop
+   (ref.null none)
+  )
+  (local.set $user_c
+   (call $add_cached
+    (local.get $user_a)
+    (local.get $user_b)
+    (global.get $site_bin_0)
+   )
+  )
+  (drop
+   (ref.null none)
+  )
+  (drop
+   (call $console_log
+    (local.get $user_c)
+   )
+  )
+  (local.set $user_d
+   (struct.new $BoxedF64
+    (f64.const 2.5)
+   )
+  )
+  (drop
+   (ref.null none)
+  )
+  (local.set $user_e
+   (call $add_cached
+    (local.get $user_a)
+    (local.get $user_d)
+    (global.get $site_bin_1)
+   )
+  )
+  (drop
+   (ref.null none)
+  )
+  (drop
+   (call $console_log
+    (local.get $user_e)
+   )
+  )
+  (local.set $user_f
+   (struct.new $BoxedF64
+    (f64.const 5.5)
+   )
+  )
+  (drop
+   (ref.null none)
+  )
+  (local.set $user_g
+   (call $add_cached
+    (local.get $user_f)
+    (local.get $user_a)
+    (global.get $site_bin_2)
+   )
+  )
+  (drop
+   (ref.null none)
+  )
+  (drop
+   (call $console_log
+    (local.get $user_g)
+   )
+  )
+  (local.set $user_h
+   (struct.new $BoxedF64
+    (f64.const 1.1)
+   )
+  )
+  (drop
+   (ref.null none)
+  )
+  (local.set $user_i
+   (call $add_cached
+    (local.get $user_d)
+    (local.get $user_h)
+    (global.get $site_bin_3)
+   )
+  )
+  (drop
+   (ref.null none)
+  )
+  (drop
+   (call $console_log
+    (local.get $user_i)
+   )
+  )
+  (local.set $user_sum
+   (ref.i31
+    (i32.const 0)
+   )
+  )
+  (drop
+   (ref.null none)
+  )
+  (local.set $user_j
+   (ref.i31
+    (i32.const 0)
+   )
+  )
+  (block $break
+   (loop $continue
+    (br_if $break
+     (i32.eqz
+      (i31.get_s
+       (ref.cast (ref i31)
+        (call $less_than
+         (local.get $user_j)
+         (ref.i31
+          (i32.const 5)
+         )
+        )
+       )
+      )
+     )
+    )
+    (drop
+     (local.tee $user_sum
+      (call $add_cached
+       (local.get $user_sum)
+       (local.get $user_j)
+       (global.get $site_bin_4)
+      )
+     )
+    )
+    (drop
+     (block (result anyref)
+      (local.set $temp_0
+       (local.get $user_j)
+      )
+      (local.set $user_j
+       (call $add_cached
+        (local.get $temp_0)
+        (ref.i31
+         (i32.const 1)
+        )
+        (global.get $site_bin_5)
+       )
+      )
+      (local.get $temp_0)
+     )
+    )
+    (br $continue)
+   )
+  )
+  (drop
+   (ref.null none)
+  )
   (call $console_log
-   (call $main)
+   (local.get $user_sum)
   )
  )
 )
