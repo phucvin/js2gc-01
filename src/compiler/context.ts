@@ -19,6 +19,10 @@ export class CompilationContext {
         this.locals.set(name, type);
     }
 
+    hasLocal(name: string): boolean {
+        return this.locals.has(name);
+    }
+
     getLocals(): Map<string, string> {
         return this.locals;
     }
