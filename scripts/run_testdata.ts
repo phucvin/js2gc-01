@@ -2,11 +2,16 @@ import binaryen from 'binaryen';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import { compile } from '../src/compiler.ts';
+import { compile } from '../src/compiler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const projectRoot = path.resolve(__dirname, '..');
+let projectRoot = path.resolve(__dirname, '..');
+
+// If running from dist/scripts, we need to go up one more level
+if (projectRoot.endsWith('dist')) {
+    projectRoot = path.resolve(projectRoot, '..');
+}
 const testDataDir = path.join(projectRoot, 'testdata');
 
 async function run() {

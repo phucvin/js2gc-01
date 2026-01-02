@@ -1,6 +1,6 @@
 import ts from 'typescript';
-import { getPropertyId, CompilationContext, registerGlobalCallSite, registerGeneratedFunction, registerBinaryOpCallSite } from './context.ts';
-import { compileBody } from './statement.ts';
+import { getPropertyId, CompilationContext, registerGlobalCallSite, registerGeneratedFunction, registerBinaryOpCallSite } from './context.js';
+import { compileBody } from './statement.js';
 
 let closureCounter = 0;
 

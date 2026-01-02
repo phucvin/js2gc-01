@@ -1,8 +1,8 @@
 import ts from 'typescript';
 import binaryen from 'binaryen';
-import { compileFunction } from './function.ts';
-import { resetPropertyMap, resetGlobalCallSites, globalCallSites, generatedFunctions, resetGeneratedFunctions, binaryOpCallSites, type CompilerOptions } from './context.ts';
-import { resetClosureCounter } from './expression.ts';
+import { compileFunction } from './function.js';
+import { resetPropertyMap, resetGlobalCallSites, globalCallSites, generatedFunctions, resetGeneratedFunctions, binaryOpCallSites, type CompilerOptions } from './context.js';
+import { resetClosureCounter } from './expression.js';
 
 // Export for other files to use if needed
 export type { CompilerOptions };

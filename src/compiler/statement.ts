@@ -1,6 +1,6 @@
 import ts from 'typescript';
-import { compileExpression } from './expression.ts';
-import { CompilationContext } from './context.ts';
+import { compileExpression } from './expression.js';
+import { CompilationContext } from './context.js';
 
 export function compileStatement(stmt: ts.Statement, ctx: CompilationContext): string {
     if (ts.isReturnStatement(stmt) && stmt.expression) {

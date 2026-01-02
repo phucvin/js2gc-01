@@ -1,6 +1,6 @@
 import ts from 'typescript';
-import { compileBody } from './statement.ts';
-import { CompilationContext, type CompilerOptions } from './context.ts';
+import { compileBody } from './statement.js';
+import { CompilationContext, type CompilerOptions } from './context.js';
 
 export function compileFunction(func: ts.FunctionDeclaration, options?: CompilerOptions): string {
     const name = func.name!.text;

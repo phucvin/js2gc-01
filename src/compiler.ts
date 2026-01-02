@@ -1,1 +1,1 @@
-export { compile } from './compiler/index.ts';
+export { compile } from './compiler/index.js';

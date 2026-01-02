@@ -20,7 +20,9 @@ To run the tests:
 1.  Compile the TypeScript files and run the test runner:
 
     ```bash
-    node --experimental-wasm-stringref node_modules/ts-node/dist/bin.js scripts/run_testdata.ts
+    npm install typescript
+    npx tsc -p tsconfig.build.json
+    node --experimental-wasm-stringref dist/scripts/run_testdata.js
     ```
 
     The runner will:
@@ -35,14 +37,16 @@ To run the tests:
 To run benchmarks:
 
 ```bash
-node --experimental-wasm-stringref node_modules/ts-node/dist/bin.js scripts/run_benchmark.ts
+npm install typescript
+npx tsc -p tsconfig.build.json
+node --experimental-wasm-stringref dist/scripts/run_benchmark.js
 ```
 
 This runs a few iterations of each benchmark (min of 5) for both Wasm and JS and compares the execution time.
 
-Latest run:
+## Benchmark Results
 
 | Benchmark | JS (ms) | Wasm IC (ms) | Wasm No IC (ms) | Ratio Wasm(IC)/JS | Ratio Wasm(NoIC)/JS |
 |---|---|---|---|---|---|
-| fib.js | 56351.3957 | 5400.7008 | 6203.0335 | 0.10 | 0.11 |
-| field_access.js | 4.7349 | 20.2351 | 32.0765 | 4.27 | 6.77 |
+| fib.js | 444.7162 | 42.8224 | 50.0957 | 0.10 | 0.11 |
+| field_access.js | 4.2910 | 20.9166 | 31.5153 | 4.87 | 7.34 |

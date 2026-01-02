@@ -3,11 +3,17 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vm from 'vm';
 import { fileURLToPath } from 'url';
-import { compile } from '../src/compiler.ts';
+import { compile } from '../src/compiler.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const projectRoot = path.resolve(__dirname, '..');
+let projectRoot = path.resolve(__dirname, '..');
+
+// If running from dist/scripts, we need to go up one more level
+if (projectRoot.endsWith('dist')) {
+    projectRoot = path.resolve(projectRoot, '..');
+}
+
 const benchmarkDir = path.join(projectRoot, 'benchmark');
 
 async function runBenchmark(jsSource: string, file: string, enableIC: boolean): Promise<{ duration: number, output: string }> {
