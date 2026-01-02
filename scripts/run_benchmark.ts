@@ -54,35 +54,45 @@ async function run() {
         module.dispose();
 
         // Prepare Wasm Execution
-        let wasmDuration = 0;
+        let wasmDuration = Infinity;
+        let wasmOutput = "";
         try {
             const compiled = await WebAssembly.compile(binary as any);
-            let output = "";
-            const imports = {
-                env: {
-                    print_i32: (val: number) => { output += val + "\n"; },
-                    print_f64: (val: number) => { output += val + "\n"; },
-                    print_string: (val: string) => { output += val + "\n"; },
+
+            for (let i = 0; i < 5; i++) {
+                let currentOutput = "";
+                const imports = {
+                    env: {
+                        print_i32: (val: number) => { currentOutput += val + "\n"; },
+                        print_f64: (val: number) => { currentOutput += val + "\n"; },
+                        print_string: (val: string) => { currentOutput += val + "\n"; },
+                    }
+                };
+                const instance = await WebAssembly.instantiate(compiled, imports);
+                const main = (instance.exports.main || instance.exports.test) as () => void;
+
+                if (typeof main !== 'function') {
+                    console.error(`No main/test export in ${file}`);
+                    break;
                 }
-            };
-            const instance = await WebAssembly.instantiate(compiled, imports);
-            const main = (instance.exports.main || instance.exports.test) as () => void;
 
-            if (typeof main !== 'function') {
-                console.error(`No main/test export in ${file}`);
-                continue;
+                const start = performance.now();
+                main();
+                const end = performance.now();
+                const duration = end - start;
+                if (duration < wasmDuration) {
+                    wasmDuration = duration;
+                    wasmOutput = currentOutput;
+                }
             }
+            if (wasmDuration === Infinity) continue;
 
-            const start = performance.now();
-            main();
-            const end = performance.now();
-            wasmDuration = end - start;
-            console.log(`Wasm Output: ${output.trim()}`);
-            console.log(`Wasm Duration: ${wasmDuration.toFixed(4)} ms`);
+            console.log(`Wasm Output: ${wasmOutput.trim()}`);
+            console.log(`Wasm Duration (min of 5): ${wasmDuration.toFixed(4)} ms`);
 
             // Save output
             const outPath = path.join(benchmarkDir, `${file.replace('.js', '.out')}`);
-            fs.writeFileSync(outPath, output);
+            fs.writeFileSync(outPath, wasmOutput);
 
         } catch (e) {
             console.error(`Wasm execution failed:`, e);
@@ -90,43 +100,48 @@ async function run() {
         }
 
         // Prepare JS Execution
-        let jsDuration = 0;
+        let jsDuration = Infinity;
+        let jsOutput = "";
         try {
-            let output = "";
-            const context = vm.createContext({
-                console: {
-                    log: (...args: any[]) => {
-                        output += args.join(' ') + "\n";
+            for (let i = 0; i < 5; i++) {
+                let currentOutput = "";
+                const context = vm.createContext({
+                    console: {
+                        log: (...args: any[]) => {
+                            currentOutput += args.join(' ') + "\n";
+                        }
                     }
+                });
+                const script = new vm.Script(jsSource);
+                script.runInContext(context);
+
+                const main = context.main;
+
+                if (typeof main === 'function') {
+                    const start = performance.now();
+                    main();
+                    const end = performance.now();
+                    const duration = end - start;
+                    if (duration < jsDuration) {
+                        jsDuration = duration;
+                        jsOutput = currentOutput;
+                    }
+                } else {
+                    console.log("Could not find main function in JS context.");
+                    break;
                 }
-            });
-            const script = new vm.Script(jsSource);
-            script.runInContext(context);
+            }
 
-            const main = context.main; // Assuming global function declaration creates a property on global object
-            // Note: in strict mode or modules, top level vars might not be on global object.
-            // But our compiler treats them as script globals.
-
-            if (typeof main === 'function') {
-                const start = performance.now();
-                main();
-                const end = performance.now();
-                jsDuration = end - start;
-                console.log(`JS Output: ${output.trim()}`);
-                console.log(`JS Duration: ${jsDuration.toFixed(4)} ms`);
-            } else {
-                 console.log("Could not find main function in JS context. Running top-level code was the execution?");
-                 // If the code ran top-level during runInContext, that's not comparable if we included that in compilation time.
-                 // But our pattern is defining functions and calling main.
-                 // If main is not defined, maybe it was a script that just ran?
-                 // But for Wasm we call export 'main'.
+            if (jsDuration !== Infinity) {
+                console.log(`JS Output: ${jsOutput.trim()}`);
+                console.log(`JS Duration (min of 5): ${jsDuration.toFixed(4)} ms`);
             }
 
         } catch (e) {
             console.error(`JS execution failed:`, e);
         }
 
-        if (wasmDuration > 0 && jsDuration > 0) {
+        if (wasmDuration !== Infinity && jsDuration !== Infinity) {
             const ratio = wasmDuration / jsDuration;
             console.log(`Ratio (Wasm/JS): ${ratio.toFixed(2)}x (Lower is better)`);
             if (ratio < 1) {

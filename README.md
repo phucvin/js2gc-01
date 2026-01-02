@@ -29,3 +29,27 @@ To run the tests:
     -   Use `binaryen` to convert WAT to Wasm binary.
     -   Execute the Wasm binary.
     -   Write the output to `.out` files in `testdata/`.
+
+## Benchmarks
+
+To run benchmarks:
+
+```bash
+node --experimental-wasm-stringref node_modules/ts-node/dist/bin.js scripts/run_benchmark.ts
+```
+
+This runs a few iterations of each benchmark (min of 5) for both Wasm and JS and compares the execution time.
+
+Latest run:
+```
+Found 1 JS benchmarks in /app/benchmark: [ 'fib.js' ]
+
+--- Benchmarking fib.js ---
+Compiling to WAT...
+Wasm Output: 832040
+Wasm Duration (min of 5): 44.4756 ms
+JS Output: 832040
+JS Duration (min of 5): 473.7671 ms
+Ratio (Wasm/JS): 0.09x (Lower is better)
+Result: Wasm is 10.65x faster
+```
