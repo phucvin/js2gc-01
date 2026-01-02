@@ -212,6 +212,27 @@ export function compile(source: string): string {
       )
     )
   )
+
+  (func $less_than (param $lhs anyref) (param $rhs anyref) (result anyref)
+    (if (result anyref) (ref.test (ref i31) (local.get $lhs))
+      (then
+        (if (result anyref) (ref.test (ref i31) (local.get $rhs))
+          (then
+            (ref.i31 (i32.lt_s
+              (i31.get_s (ref.cast (ref i31) (local.get $lhs)))
+              (i31.get_s (ref.cast (ref i31) (local.get $rhs)))
+            ))
+          )
+          (else
+            (ref.i31 (i32.const 0))
+          )
+        )
+      )
+      (else
+        (ref.i31 (i32.const 0))
+      )
+    )
+  )
 ${wasmFuncs}
 )`;
 }

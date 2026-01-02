@@ -72,6 +72,10 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
           const left = compileExpression(expr.left, ctx);
           const right = compileExpression(expr.right, ctx);
           return `(call $add ${left} ${right})`;
+      } else if (expr.operatorToken.kind === ts.SyntaxKind.LessThanToken) {
+          const left = compileExpression(expr.left, ctx);
+          const right = compileExpression(expr.right, ctx);
+          return `(call $less_than ${left} ${right})`;
       } else if (expr.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
           // Assignment
           if (ts.isIdentifier(expr.left)) {
@@ -82,6 +86,22 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
               }
               const right = compileExpression(expr.right, ctx);
               return `(local.tee ${localName} ${right})`;
+          }
+      }
+  } else if (ts.isPostfixUnaryExpression(expr)) {
+      if (expr.operator === ts.SyntaxKind.PlusPlusToken) {
+          if (ts.isIdentifier(expr.operand)) {
+              const varName = expr.operand.text;
+              const localName = `$user_${varName}`;
+              if (!ctx.hasLocal(localName)) {
+                  throw new Error(`Variable ${varName} not declared`);
+              }
+              const tempLocal = ctx.getTempLocal('anyref');
+              return `(block (result anyref)
+                  (local.set ${tempLocal} (local.get ${localName}))
+                  (local.set ${localName} (call $add (local.get ${tempLocal}) (ref.i31 (i32.const 1))))
+                  (local.get ${tempLocal})
+              )`;
           }
       }
   } else if (ts.isPropertyAccessExpression(expr)) {

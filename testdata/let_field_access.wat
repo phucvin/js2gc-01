@@ -179,11 +179,31 @@
     )
   )
 
+  (func $less_than (param $lhs anyref) (param $rhs anyref) (result anyref)
+    (if (result anyref) (ref.test (ref i31) (local.get $lhs))
+      (then
+        (if (result anyref) (ref.test (ref i31) (local.get $rhs))
+          (then
+            (ref.i31 (i32.lt_s
+              (i31.get_s (ref.cast (ref i31) (local.get $lhs)))
+              (i31.get_s (ref.cast (ref i31) (local.get $rhs)))
+            ))
+          )
+          (else
+            (ref.i31 (i32.const 0))
+          )
+        )
+      )
+      (else
+        (ref.i31 (i32.const 0))
+      )
+    )
+  )
+
   (func $test (export "test") (result anyref)
     (local $user_obj anyref)
 (local $temp_0 (ref null $Object))
-(local $temp_1 (ref $CallSite))
-(local $cache_2 (ref null $CallSite))
+(local $cache_1 (ref null $CallSite))
 
     (local.set $user_obj (block (result (ref $Object))
          (local.set $temp_0 (call $new_object (call $extend_shape (call $new_root_shape) (i32.const 0) (i32.const 0)) (i32.const 1)))
@@ -194,10 +214,10 @@
 (ref.null any)
 (drop)
 (call $console_log (block (result anyref)
-             (if (ref.is_null (local.get $cache_2))
-               (then (local.set $cache_2 (call $new_callsite)))
+             (if (ref.is_null (local.get $cache_1))
+               (then (local.set $cache_1 (call $new_callsite)))
              )
-             (call $get_field_cached (ref.cast (ref $Object) (local.get $user_obj)) (ref.as_non_null (local.get $cache_2)) (i32.const 0))
+             (call $get_field_cached (ref.cast (ref $Object) (local.get $user_obj)) (ref.as_non_null (local.get $cache_1)) (i32.const 0))
           ))
   )
 )
