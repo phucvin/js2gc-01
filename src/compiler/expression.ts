@@ -86,6 +86,13 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
               }
               const right = compileExpression(expr.right, ctx);
               return `(local.tee ${localName} ${right})`;
+          } else if (ts.isPropertyAccessExpression(expr.left)) {
+              if (ts.isIdentifier(expr.left.name)) {
+                  const keyId = getPropertyId(expr.left.name.text);
+                  const objCode = compileExpression(expr.left.expression, ctx);
+                  const valCode = compileExpression(expr.right, ctx);
+                  return `(call $put_field (ref.cast (ref $Object) ${objCode}) (i32.const ${keyId}) ${valCode})`;
+              }
           }
       }
   } else if (ts.isPostfixUnaryExpression(expr)) {

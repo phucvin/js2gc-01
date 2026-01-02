@@ -103,6 +103,48 @@ export function compile(source: string): string {
     )
   )
 
+  (func $put_field (param $obj (ref $Object)) (param $key i32) (param $val anyref) (result anyref)
+    (local $shape (ref $Shape))
+    (local $offset i32)
+    (local $old_storage (ref $Storage))
+    (local $new_storage (ref $Storage))
+    (local $old_len i32)
+
+    (local.set $shape (struct.get $Object $shape (local.get $obj)))
+    (local.set $offset (call $lookup_in_shape (local.get $shape) (local.get $key)))
+
+    (if (i32.ne (local.get $offset) (i32.const -1))
+      (then
+        ;; Field exists, just update storage
+        (array.set $Storage (struct.get $Object $storage (local.get $obj)) (local.get $offset) (local.get $val))
+      )
+      (else
+        ;; Field does not exist, extend shape
+        ;; 1. Calculate new offset (current storage length)
+        (local.set $old_storage (struct.get $Object $storage (local.get $obj)))
+        (local.set $old_len (array.len (local.get $old_storage)))
+        (local.set $offset (local.get $old_len))
+
+        ;; 2. Extend shape
+        (local.set $shape (call $extend_shape (local.get $shape) (local.get $key) (local.get $offset)))
+        (struct.set $Object $shape (local.get $obj) (local.get $shape))
+
+        ;; 3. Allocate new storage (len + 1)
+        (local.set $new_storage (array.new_default $Storage (i32.add (local.get $old_len) (i32.const 1))))
+
+        ;; 4. Copy old storage to new
+        (array.copy $Storage $Storage (local.get $new_storage) (i32.const 0) (local.get $old_storage) (i32.const 0) (local.get $old_len))
+
+        ;; 5. Set new value
+        (array.set $Storage (local.get $new_storage) (local.get $offset) (local.get $val))
+
+        ;; 6. Update object storage
+        (struct.set $Object $storage (local.get $obj) (local.get $new_storage))
+      )
+    )
+    (local.get $val)
+  )
+
   (func $lookup_in_shape (param $shape (ref $Shape)) (param $key i32) (result i32)
     (local $curr (ref null $Shape))
     (local.set $curr (local.get $shape))

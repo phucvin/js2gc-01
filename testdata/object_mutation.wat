@@ -24,8 +24,19 @@
  (import "env" "print_i32" (func $print_i32 (type $7) (param i32)))
  (import "env" "print_f64" (func $print_f64 (type $8) (param f64)))
  (import "env" "print_string" (func $print_string (type $9) (param (ref string))))
+ (global $site_0 (mut (ref $CallSite)) (struct.new $CallSite
+  (ref.null none)
+  (i32.const -1)
+ ))
+ (global $site_1 (mut (ref $CallSite)) (struct.new $CallSite
+  (ref.null none)
+  (i32.const -1)
+ ))
+ (global $site_2 (mut (ref $CallSite)) (struct.new $CallSite
+  (ref.null none)
+  (i32.const -1)
+ ))
  (export "main" (func $main))
- (export "test" (func $test))
  (func $new_root_shape (type $10) (result (ref $Shape))
   (struct.new $Shape
    (ref.null none)
@@ -421,21 +432,79 @@
    )
   )
  )
- (func $other (type $19) (result anyref)
-  (return
-   (ref.i31
-    (i32.const 42)
+ (func $main (type $19) (result anyref)
+  (local $user_obj anyref)
+  (local $temp_0 (ref null $Object))
+  (local.set $user_obj
+   (block (result (ref $Object))
+    (local.set $temp_0
+     (call $new_object
+      (call $extend_shape
+       (call $new_root_shape)
+       (i32.const 0)
+       (i32.const 0)
+      )
+      (i32.const 1)
+     )
+    )
+    (call $set_storage
+     (ref.as_non_null
+      (local.get $temp_0)
+     )
+     (i32.const 0)
+     (ref.i31
+      (i32.const 10)
+     )
+    )
+    (ref.as_non_null
+     (local.get $temp_0)
+    )
    )
   )
- )
- (func $main (type $19) (result anyref)
-  (return
-   (call $other)
+  (drop
+   (ref.null none)
   )
- )
- (func $test (type $19) (result anyref)
+  (drop
+   (call $console_log
+    (call $get_field_cached
+     (ref.cast (ref $Object)
+      (local.get $user_obj)
+     )
+     (global.get $site_0)
+     (i32.const 0)
+    )
+   )
+  )
+  (drop
+   (call $put_field
+    (ref.cast (ref $Object)
+     (local.get $user_obj)
+    )
+    (i32.const 1)
+    (ref.i31
+     (i32.const 20)
+    )
+   )
+  )
+  (drop
+   (call $console_log
+    (call $get_field_cached
+     (ref.cast (ref $Object)
+      (local.get $user_obj)
+     )
+     (global.get $site_1)
+     (i32.const 1)
+    )
+   )
+  )
   (call $console_log
-   (call $main)
+   (call $get_field_cached
+    (ref.cast (ref $Object)
+     (local.get $user_obj)
+    )
+    (global.get $site_2)
+    (i32.const 0)
+   )
   )
  )
 )
