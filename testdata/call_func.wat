@@ -51,6 +51,27 @@
     )
   )
 
+  (func $get_property (param $obj (ref $Object)) (param $key i32) (result anyref)
+    (local $shape (ref null $Shape))
+    (local.set $shape (struct.get $Object $shape (local.get $obj)))
+    (loop $search
+      (if (ref.is_null (local.get $shape))
+        (then (return (ref.null any)))
+      )
+      (if (i32.eq (struct.get $Shape $key (ref.as_non_null (local.get $shape))) (local.get $key))
+        (then
+          (return (array.get $Storage
+            (struct.get $Object $storage (local.get $obj))
+            (struct.get $Shape $offset (ref.as_non_null (local.get $shape)))
+          ))
+        )
+      )
+      (local.set $shape (struct.get $Shape $parent (ref.as_non_null (local.get $shape))))
+      (br $search)
+    )
+    (ref.null any)
+  )
+
   (func $console_log (param $val anyref) (result anyref)
     (if (ref.is_null (local.get $val))
       (then
