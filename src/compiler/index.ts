@@ -1,4 +1,5 @@
 import ts from 'typescript';
+import binaryen from 'binaryen';
 import { compileFunction } from './function.ts';
 import { resetPropertyMap, resetGlobalCallSites, globalCallSites } from './context.ts';
 
@@ -44,7 +45,7 @@ export function compile(source: string): string {
       }
   }
 
-  return `(module
+  const wat = `(module
   (rec
     (type $Shape (struct
       (field $parent (ref null $Shape))
@@ -261,4 +262,12 @@ export function compile(source: string): string {
   )
 ${wasmFuncs}
 )`;
+
+  const mod = binaryen.parseText(wat);
+  mod.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes | binaryen.Features.Strings);
+  mod.validate();
+  mod.optimize();
+  const finalWat = mod.emitText();
+  mod.dispose();
+  return finalWat;
 }
