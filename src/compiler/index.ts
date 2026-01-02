@@ -431,6 +431,12 @@ ${wasmFuncs}
     binaryen.Features.Strings
   );
 
+  module.runPasses([
+    "remove-unused-brs",
+    "remove-unused-names",
+    "remove-unused-module-elements",
+  ]);
+
   if (!module.validate()) {
     throw new Error('Validation failed');
   }
