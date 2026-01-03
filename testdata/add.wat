@@ -28,7 +28,6 @@
  ))
  (elem declare func $add_f64_f64 $add_f64_i32 $add_i32_f64 $add_i32_i32 $add_unsupported)
  (export "main" (func $main))
- (export "test" (func $test))
  (func $console_log (type $ClosureSig0) (param $val anyref) (result anyref)
   (if
    (ref.is_null
@@ -376,15 +375,12 @@
   )
  )
  (func $main (type $16) (result anyref)
-  (call $add_cached
-   (call $a)
-   (call $b)
-   (global.get $site_bin_0)
-  )
- )
- (func $test (type $16) (result anyref)
   (call $console_log
-   (call $main)
+   (call $add_cached
+    (call $a)
+    (call $b)
+    (global.get $site_bin_0)
+   )
   )
  )
 )

@@ -35,10 +35,9 @@ export function compile(source: string, options?: CompilerOptions): string {
   });
 
   const mainFunc = functions.find(f => f.name?.text === 'main');
-  const testFunc = functions.find(f => f.name?.text === 'test');
 
-  if (!mainFunc && !testFunc) {
-    throw new Error('No main or test function found');
+  if (!mainFunc) {
+    throw new Error('No main function found');
   }
 
   let wasmFuncs = '';

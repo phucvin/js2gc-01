@@ -1,5 +1,1 @@
-export function main() {
-  return 1234.56;
-}
-
-export function test() { console.log(main()); }
+export function main() { console.log(1234.56); }

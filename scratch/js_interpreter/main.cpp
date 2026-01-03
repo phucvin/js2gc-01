@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
         parser.parse();
 
         Evaluator vm(parser.getNodes(), parser.getFunctions());
-        vm.runFunction("test", {});
+        vm.runFunction("main", {});
 
     } catch (const std::exception& e) {
         std::cerr << "Error: " << e.what() << std::endl;

@@ -20,7 +20,6 @@
  (import "env" "print_f64" (func $print_f64 (type $12) (param f64)))
  (import "env" "print_string" (func $print_string (type $13) (param (ref string))))
  (export "main" (func $main))
- (export "test" (func $test))
  (func $console_log (type $ClosureSig0) (param $val anyref) (result anyref)
   (if
    (ref.is_null
@@ -111,13 +110,10 @@
   (ref.null none)
  )
  (func $main (type $14) (result anyref)
-  (struct.new $BoxedF64
-   (f64.const 1234.56)
-  )
- )
- (func $test (type $14) (result anyref)
   (call $console_log
-   (call $main)
+   (struct.new $BoxedF64
+    (f64.const 1234.56)
+   )
   )
  )
 )
