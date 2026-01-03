@@ -45,7 +45,7 @@ async function runBenchmark(jsSource: string, file: string, enableIC: boolean): 
          return { duration: Infinity, output: "" };
     }
 
-    const watPath = path.join(benchmarkDir, `${file.replace('.js', '')}.${enableIC ? 'ic' : 'no_ic'}.wat`);
+    const watPath = path.join(benchmarkDir, `${file.replace(/\.js$/, '')}.${enableIC ? 'ic' : 'no_ic'}.wat`);
     fs.writeFileSync(watPath, watText);
 
     let module;
@@ -65,6 +65,9 @@ async function runBenchmark(jsSource: string, file: string, enableIC: boolean): 
 
     const binary = module.emitBinary();
     module.dispose();
+
+    const wasmPath = path.join(benchmarkDir, `${file.replace(/\.js$/, '')}.${enableIC ? 'ic' : 'no_ic'}.wasm`);
+    fs.writeFileSync(wasmPath, binary);
 
     let wasmDuration = Infinity;
     let wasmOutput = "";
