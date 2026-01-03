@@ -19,7 +19,13 @@ class Parser {
     int emit(Node n);
     int resolve(std::string name);
     int parseExpression();
+    int parseAssignment();
+    int parseRelational();
+    int parseAddSub();
+    int parseMulDiv();
     int parsePrimary();
+    int parseArrowFunction(); // New declaration
+    int parseObjectLiteral();
     int parseCall(std::string name);
     int parseCallNode(int funcNodeIdx);
     void parseBlock();
