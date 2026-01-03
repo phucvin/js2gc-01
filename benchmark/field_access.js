@@ -1,7 +1,8 @@
 function main() {
-    let o = { val: 0 };
-    for (let i = 0; i < 1000000; i++) {
-        o.val = o.val + 1;
+    let o = { x: 1, y: 2, z: 3 };
+    let sum = 0;
+    for (let i = 0; i < 1000; i++) {
+        sum = sum + o.x + o.y + o.z;
     }
-    console.log(o.val);
+    console.log(sum);
 }

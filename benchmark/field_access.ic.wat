@@ -18,12 +18,11 @@
  (type $14 (func (param (ref $Shape) i32 i32) (result (ref $Shape))))
  (type $15 (func (param (ref $Shape) i32) (result (ref $Object))))
  (type $16 (func (param (ref $Object) i32 anyref)))
- (type $17 (func (param (ref $Object) i32 anyref) (result anyref)))
- (type $18 (func (param (ref $Shape) i32) (result i32)))
- (type $19 (func (param (ref $Object) (ref $CallSite) i32) (result anyref)))
- (type $20 (func (param anyref) (result i32)))
- (type $21 (func (param anyref anyref (ref $BinaryOpCallSite)) (result anyref)))
- (type $22 (func (result anyref)))
+ (type $17 (func (param (ref $Shape) i32) (result i32)))
+ (type $18 (func (param (ref $Object) (ref $CallSite) i32) (result anyref)))
+ (type $19 (func (param anyref) (result i32)))
+ (type $20 (func (param anyref anyref (ref $BinaryOpCallSite)) (result anyref)))
+ (type $21 (func (result anyref)))
  (import "env" "print_i32" (func $print_i32 (type $11) (param i32)))
  (import "env" "print_f64" (func $print_f64 (type $12) (param f64)))
  (global $site_0 (mut (ref $CallSite)) (struct.new $CallSite
@@ -34,12 +33,26 @@
   (ref.null none)
   (i32.const -1)
  ))
+ (global $site_2 (mut (ref $CallSite)) (struct.new $CallSite
+  (ref.null none)
+  (i32.const -1)
+ ))
  (global $site_bin_0 (mut (ref $BinaryOpCallSite)) (struct.new $BinaryOpCallSite
   (i32.const 0)
   (i32.const 0)
   (ref.null nofunc)
  ))
  (global $site_bin_1 (mut (ref $BinaryOpCallSite)) (struct.new $BinaryOpCallSite
+  (i32.const 0)
+  (i32.const 0)
+  (ref.null nofunc)
+ ))
+ (global $site_bin_2 (mut (ref $BinaryOpCallSite)) (struct.new $BinaryOpCallSite
+  (i32.const 0)
+  (i32.const 0)
+  (ref.null nofunc)
+ ))
+ (global $site_bin_3 (mut (ref $BinaryOpCallSite)) (struct.new $BinaryOpCallSite
   (i32.const 0)
   (i32.const 0)
   (ref.null nofunc)
@@ -77,91 +90,7 @@
    (local.get $val)
   )
  )
- (func $put_field (type $17) (param $obj (ref $Object)) (param $key i32) (param $val anyref) (result anyref)
-  (local $shape (ref $Shape))
-  (local $offset i32)
-  (local $old_storage (ref $Storage))
-  (local $new_storage (ref $Storage))
-  (local $old_len i32)
-  (local.set $shape
-   (struct.get $Object $shape
-    (local.get $obj)
-   )
-  )
-  (local.set $offset
-   (call $lookup_in_shape
-    (local.get $shape)
-    (local.get $key)
-   )
-  )
-  (if
-   (i32.ne
-    (local.get $offset)
-    (i32.const -1)
-   )
-   (then
-    (array.set $Storage
-     (struct.get $Object $storage
-      (local.get $obj)
-     )
-     (local.get $offset)
-     (local.get $val)
-    )
-   )
-   (else
-    (local.set $old_storage
-     (struct.get $Object $storage
-      (local.get $obj)
-     )
-    )
-    (local.set $old_len
-     (array.len
-      (local.get $old_storage)
-     )
-    )
-    (local.set $offset
-     (local.get $old_len)
-    )
-    (local.set $shape
-     (call $extend_shape
-      (local.get $shape)
-      (local.get $key)
-      (local.get $offset)
-     )
-    )
-    (struct.set $Object $shape
-     (local.get $obj)
-     (local.get $shape)
-    )
-    (local.set $new_storage
-     (array.new_default $Storage
-      (i32.add
-       (local.get $old_len)
-       (i32.const 1)
-      )
-     )
-    )
-    (array.copy $Storage $Storage
-     (local.get $new_storage)
-     (i32.const 0)
-     (local.get $old_storage)
-     (i32.const 0)
-     (local.get $old_len)
-    )
-    (array.set $Storage
-     (local.get $new_storage)
-     (local.get $offset)
-     (local.get $val)
-    )
-    (struct.set $Object $storage
-     (local.get $obj)
-     (local.get $new_storage)
-    )
-   )
-  )
-  (local.get $val)
- )
- (func $lookup_in_shape (type $18) (param $shape (ref $Shape)) (param $key i32) (result i32)
+ (func $lookup_in_shape (type $17) (param $shape (ref $Shape)) (param $key i32) (result i32)
   (local $curr (ref null $Shape))
   (local.set $curr
    (local.get $shape)
@@ -209,7 +138,7 @@
   )
   (i32.const -1)
  )
- (func $get_field_slow (type $19) (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
+ (func $get_field_slow (type $18) (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
   (local $offset i32)
   (local $shape (ref $Shape))
   (local.set $shape
@@ -249,7 +178,7 @@
   )
   (ref.null none)
  )
- (func $get_field_cached (type $19) (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
+ (func $get_field_cached (type $18) (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
   (if
    (ref.eq
     (struct.get $Object $shape
@@ -340,7 +269,7 @@
   )
   (ref.null none)
  )
- (func $get_type_id (type $20) (param $val anyref) (result i32)
+ (func $get_type_id (type $19) (param $val anyref) (result i32)
   (if
    (ref.is_null
     (local.get $val)
@@ -444,7 +373,7 @@
  (func $add_unsupported (type $BinaryOpFunc) (param $0 anyref) (param $1 anyref) (result anyref)
   (ref.null none)
  )
- (func $add_slow (type $21) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+ (func $add_slow (type $20) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
   (local $t_lhs i32)
   (local $t_rhs i32)
   (local $target (ref null $BinaryOpFunc))
@@ -547,7 +476,7 @@
    )
   )
  )
- (func $add_cached (type $21) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+ (func $add_cached (type $20) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
   (if (result anyref)
    (i32.and
     (i32.eq
@@ -627,9 +556,10 @@
    )
   )
  )
- (func $main (type $22) (result anyref)
+ (func $main (type $21) (result anyref)
   (local $user_o anyref)
   (local $temp_0 (ref null $Object))
+  (local $user_sum anyref)
   (local $user_i anyref)
   (local $temp_1 anyref)
   (local.set $user_o
@@ -637,11 +567,19 @@
     (local.set $temp_0
      (call $new_object
       (call $extend_shape
-       (call $new_root_shape)
-       (i32.const 0)
-       (i32.const 0)
+       (call $extend_shape
+        (call $extend_shape
+         (call $new_root_shape)
+         (i32.const 0)
+         (i32.const 0)
+        )
+        (i32.const 1)
+        (i32.const 1)
+       )
+       (i32.const 2)
+       (i32.const 2)
       )
-      (i32.const 1)
+      (i32.const 3)
      )
     )
     (call $set_storage
@@ -650,12 +588,38 @@
      )
      (i32.const 0)
      (ref.i31
-      (i32.const 0)
+      (i32.const 1)
+     )
+    )
+    (call $set_storage
+     (ref.as_non_null
+      (local.get $temp_0)
+     )
+     (i32.const 1)
+     (ref.i31
+      (i32.const 2)
+     )
+    )
+    (call $set_storage
+     (ref.as_non_null
+      (local.get $temp_0)
+     )
+     (i32.const 2)
+     (ref.i31
+      (i32.const 3)
      )
     )
     (ref.as_non_null
      (local.get $temp_0)
     )
+   )
+  )
+  (drop
+   (ref.null none)
+  )
+  (local.set $user_sum
+   (ref.i31
+    (i32.const 0)
    )
   )
   (drop
@@ -676,7 +640,7 @@
          (call $less_than
           (local.get $user_i)
           (ref.i31
-           (i32.const 1000000)
+           (i32.const 1000)
           )
          )
         )
@@ -684,23 +648,37 @@
       )
      )
      (drop
-      (call $put_field
-       (ref.cast (ref $Object)
-        (local.get $user_o)
-       )
-       (i32.const 0)
+      (local.tee $user_sum
        (call $add_cached
+        (call $add_cached
+         (call $add_cached
+          (local.get $user_sum)
+          (call $get_field_cached
+           (ref.cast (ref $Object)
+            (local.get $user_o)
+           )
+           (global.get $site_0)
+           (i32.const 0)
+          )
+          (global.get $site_bin_0)
+         )
+         (call $get_field_cached
+          (ref.cast (ref $Object)
+           (local.get $user_o)
+          )
+          (global.get $site_1)
+          (i32.const 1)
+         )
+         (global.get $site_bin_1)
+        )
         (call $get_field_cached
          (ref.cast (ref $Object)
           (local.get $user_o)
          )
-         (global.get $site_0)
-         (i32.const 0)
+         (global.get $site_2)
+         (i32.const 2)
         )
-        (ref.i31
-         (i32.const 1)
-        )
-        (global.get $site_bin_0)
+        (global.get $site_bin_2)
        )
       )
      )
@@ -715,7 +693,7 @@
          (ref.i31
           (i32.const 1)
          )
-         (global.get $site_bin_1)
+         (global.get $site_bin_3)
         )
        )
        (local.get $temp_1)
@@ -729,13 +707,7 @@
    (ref.null none)
   )
   (call $console_log
-   (call $get_field_cached
-    (ref.cast (ref $Object)
-     (local.get $user_o)
-    )
-    (global.get $site_1)
-    (i32.const 0)
-   )
+   (local.get $user_sum)
   )
  )
 )

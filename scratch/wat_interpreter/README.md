@@ -25,6 +25,23 @@ To run the test suite against `testdata/*.wat`:
 python3 ../../scripts/run_testdata_with_wat_interpreter.py
 ```
 
+## Benchmark
+
+To run benchmarks:
+
+```bash
+python3 ../../scripts/run_benchmark_with_wat_interpreter.py
+```
+
+Results:
+
+| Benchmark | Duration (ms) |
+|---|---|
+| fib.ic.wat | 219.36 |
+| fib.no_ic.wat | 270.23 |
+| field_access.ic.wat | 286.45 |
+| field_access.no_ic.wat | 507.22 |
+
 ## Example
 
 Running `testdata/add.wat`:

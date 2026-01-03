@@ -4,5 +4,5 @@ function fib(n) {
 }
 
 function main() {
-  console.log(fib(40));
+  console.log(fib(15));
 }
