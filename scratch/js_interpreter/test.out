@@ -1,0 +1,47 @@
+Running 19 tests...
+[PASS] add.js
+[FAIL] add_int_string.js - Output mismatch
+Expected:
+
+Actual:
+10hello
+[PASS] binary_cache.js
+[PASS] call_func.js
+[FAIL] closure.js - Output mismatch
+Expected:
+30
+Actual:
+
+[FAIL] closure_return.js - Output mismatch
+Expected:
+15
+Actual:
+
+[PASS] field_access.js
+[PASS] float_boxed.js
+[PASS] inline_cache.js
+[PASS] int_boxed.js
+[PASS] int_i31.js
+[PASS] let_field_access.js
+[FAIL] let_object.js - Output mismatch
+Expected:
+
+Actual:
+[object Object]
+[PASS] let_primitives.js
+[PASS] loop_field_access.js
+[PASS] number.js
+[FAIL] object_literal.js - Output mismatch
+Expected:
+
+Actual:
+[object Object]
+[object Object]
+[PASS] object_mutation.js
+[FAIL] string.js - Output mismatch
+Expected:
+
+Actual:
+hello world
+
+Summary: 13 passed, 6 failed
