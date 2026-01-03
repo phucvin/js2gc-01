@@ -27,7 +27,7 @@
   (ref.null nofunc)
  ))
  (elem declare func $add_f64_f64 $add_f64_i32 $add_i32_f64 $add_i32_i32 $add_unsupported)
- (export "test" (func $test))
+ (export "main" (func $main))
  (func $console_log (type $ClosureSig0) (param $val anyref) (result anyref)
   (if
    (ref.is_null
@@ -364,7 +364,7 @@
    )
   )
  )
- (func $test (type $16) (result anyref)
+ (func $main (type $16) (result anyref)
   (local $user_x anyref)
   (local $user_y anyref)
   (local.set $user_x

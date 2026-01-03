@@ -1,5 +1,5 @@
 function a() { return 1; }
 function b() { return 2; }
-function main() { return a() + b(); }
+function main_calc() { return a() + b(); }
 
-export function test() { console.log(main()); }
+export function main() { console.log(main_calc()); }

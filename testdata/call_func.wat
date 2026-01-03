@@ -20,7 +20,6 @@
  (import "env" "print_f64" (func $print_f64 (type $12) (param f64)))
  (import "env" "print_string" (func $print_string (type $13) (param (ref string))))
  (export "main" (func $main))
- (export "test" (func $test))
  (func $console_log (type $ClosureSig0) (param $val anyref) (result anyref)
   (if
    (ref.is_null
@@ -115,12 +114,12 @@
    (i32.const 42)
   )
  )
- (func $main (type $14) (result anyref)
+ (func $main_calc (type $14) (result anyref)
   (call $other)
  )
- (func $test (type $14) (result anyref)
+ (func $main (type $14) (result anyref)
   (call $console_log
-   (call $main)
+   (call $main_calc)
   )
  )
 )

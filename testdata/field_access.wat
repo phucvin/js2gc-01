@@ -33,7 +33,7 @@
   (ref.null none)
   (i32.const -1)
  ))
- (export "test" (func $test))
+ (export "main" (func $main))
  (func $new_root_shape (type $14) (result (ref $Shape))
   (struct.new $Shape
    (ref.null none)
@@ -271,7 +271,7 @@
   )
   (ref.null none)
  )
- (func $test (type $20) (result anyref)
+ (func $main (type $20) (result anyref)
   (local $temp_0 (ref null $Object))
   (local $temp_1 (ref null $Object))
   (drop

@@ -23,7 +23,7 @@
  (import "env" "print_i32" (func $print_i32 (type $11) (param i32)))
  (import "env" "print_f64" (func $print_f64 (type $12) (param f64)))
  (import "env" "print_string" (func $print_string (type $13) (param (ref string))))
- (export "test" (func $test))
+ (export "main" (func $main))
  (func $new_root_shape (type $14) (result (ref $Shape))
   (struct.new $Shape
    (ref.null none)
@@ -144,7 +144,7 @@
   )
   (ref.null none)
  )
- (func $test (type $18) (result anyref)
+ (func $main (type $18) (result anyref)
   (local $temp_0 (ref null $Object))
   (local $temp_1 (ref null $Object))
   (drop

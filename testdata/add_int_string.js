@@ -1,7 +1,7 @@
-function main() {
+function main_calc() {
   return 10 + "hello";
 }
 
-export function test() {
-  console.log(main());
+export function main() {
+  console.log(main_calc());
 }

@@ -1,5 +1,5 @@
-export function main() {
+function main_val() {
   return "hello world";
 }
 
-export function test() { console.log(main()); }
+export function main() { console.log(main_val()); }

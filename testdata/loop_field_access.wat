@@ -43,7 +43,7 @@
   (ref.null nofunc)
  ))
  (elem declare func $add_f64_f64 $add_f64_i32 $add_i32_f64 $add_i32_i32 $add_unsupported)
- (export "test" (func $test))
+ (export "main" (func $main))
  (func $new_root_shape (type $15) (result (ref $Shape))
   (struct.new $Shape
    (ref.null none)
@@ -568,7 +568,7 @@
    )
   )
  )
- (func $test (type $23) (result anyref)
+ (func $main (type $23) (result anyref)
   (local $user_obj anyref)
   (local $temp_0 (ref null $Object))
   (local $user_sum anyref)
