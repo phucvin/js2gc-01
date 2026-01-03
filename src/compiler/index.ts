@@ -11,6 +11,7 @@ export function compile(source: string, options?: CompilerOptions): string {
   // Default options
   const compilerOptions: CompilerOptions = {
       enableInlineCache: true,
+      disableStrings: false,
       ...options
   };
 
@@ -76,6 +77,80 @@ export function compile(source: string, options?: CompilerOptions): string {
   (type $ClosureSig5 (func (param anyref) (param anyref) (param anyref) (param anyref) (param anyref) (param anyref) (result anyref)))
   `;
 
+  let stringDecl = '';
+  let printStringImport = '';
+  let consoleLogBody = '';
+
+  if (!compilerOptions.disableStrings) {
+      stringDecl = `(type $BoxedString (struct (field (ref string))))`;
+      printStringImport = `(import "env" "print_string" (func $print_string (param (ref string))))`;
+      consoleLogBody = `
+      (if (ref.is_null (local.get $val))
+        (then
+          (call $print_string (string.const "null"))
+        )
+        (else
+          (if (ref.test (ref i31) (local.get $val))
+            (then
+              (call $print_i32 (i31.get_s (ref.cast (ref i31) (local.get $val))))
+            )
+            (else
+              (if (ref.test (ref $BoxedI32) (local.get $val))
+                (then
+                  (call $print_i32 (struct.get $BoxedI32 0 (ref.cast (ref $BoxedI32) (local.get $val))))
+                )
+                (else
+                  (if (ref.test (ref $BoxedF64) (local.get $val))
+                    (then
+                      (call $print_f64 (struct.get $BoxedF64 0 (ref.cast (ref $BoxedF64) (local.get $val))))
+                    )
+                    (else
+                      (if (ref.test (ref $BoxedString) (local.get $val))
+                        (then
+                          (call $print_string (struct.get $BoxedString 0 (ref.cast (ref $BoxedString) (local.get $val))))
+                        )
+                        (else
+                           (if (ref.test (ref $Object) (local.get $val))
+                             (then
+                               (call $print_string (string.const "[object Object]"))
+                             )
+                           )
+                        )
+                      )
+                    )
+                  )
+                )
+              )
+            )
+          )
+        )
+      )
+      `;
+  } else {
+      // StringRef disabled: minimal console.log that only handles numbers
+      consoleLogBody = `
+      (if (ref.test (ref i31) (local.get $val))
+        (then
+          (call $print_i32 (i31.get_s (ref.cast (ref i31) (local.get $val))))
+        )
+        (else
+          (if (ref.test (ref $BoxedI32) (local.get $val))
+            (then
+              (call $print_i32 (struct.get $BoxedI32 0 (ref.cast (ref $BoxedI32) (local.get $val))))
+            )
+            (else
+              (if (ref.test (ref $BoxedF64) (local.get $val))
+                (then
+                  (call $print_f64 (struct.get $BoxedF64 0 (ref.cast (ref $BoxedF64) (local.get $val))))
+                )
+              )
+            )
+          )
+        )
+      )
+      `;
+  }
+
   const wat = `(module
   (rec
     (type $Shape (struct
@@ -114,10 +189,11 @@ export function compile(source: string, options?: CompilerOptions): string {
 
   (type $BoxedF64 (struct (field f64)))
   (type $BoxedI32 (struct (field i32)))
-  (type $BoxedString (struct (field (ref string))))
+  ${stringDecl}
+
   (import "env" "print_i32" (func $print_i32 (param i32)))
   (import "env" "print_f64" (func $print_f64 (param f64)))
-  (import "env" "print_string" (func $print_string (param (ref string))))
+  ${printStringImport}
 
   (elem declare func $add_i32_i32 $add_f64_f64 $add_i32_f64 $add_f64_i32 $add_unsupported)
   (elem declare func $sub_i32_i32 $sub_f64_f64 $sub_i32_f64 $sub_f64_i32 $sub_unsupported)
@@ -248,46 +324,7 @@ export function compile(source: string, options?: CompilerOptions): string {
   )
 
   (func $console_log (param $val anyref) (result anyref)
-    (if (ref.is_null (local.get $val))
-      (then
-        (call $print_string (string.const "null"))
-      )
-      (else
-        (if (ref.test (ref i31) (local.get $val))
-          (then
-            (call $print_i32 (i31.get_s (ref.cast (ref i31) (local.get $val))))
-          )
-          (else
-            (if (ref.test (ref $BoxedI32) (local.get $val))
-              (then
-                (call $print_i32 (struct.get $BoxedI32 0 (ref.cast (ref $BoxedI32) (local.get $val))))
-              )
-              (else
-                (if (ref.test (ref $BoxedF64) (local.get $val))
-                  (then
-                    (call $print_f64 (struct.get $BoxedF64 0 (ref.cast (ref $BoxedF64) (local.get $val))))
-                  )
-                  (else
-                    (if (ref.test (ref $BoxedString) (local.get $val))
-                      (then
-                        (call $print_string (struct.get $BoxedString 0 (ref.cast (ref $BoxedString) (local.get $val))))
-                      )
-                      (else
-                         (if (ref.test (ref $Object) (local.get $val))
-                           (then
-                             (call $print_string (string.const "[object Object]"))
-                           )
-                         )
-                      )
-                    )
-                  )
-                )
-              )
-            )
-          )
-        )
-      )
-    )
+    ${consoleLogBody}
     (ref.null any)
   )
 
@@ -521,11 +558,8 @@ ${wasmFuncs}
 )`;
 
   const module = binaryen.parseText(wat);
-  module.setFeatures(
-    binaryen.Features.GC |
-    binaryen.Features.ReferenceTypes |
-    binaryen.Features.Strings
-  );
+  const features = binaryen.Features.GC | binaryen.Features.ReferenceTypes | (compilerOptions.disableStrings ? 0 : binaryen.Features.Strings);
+  module.setFeatures(features);
 
   module.runPasses([
     "remove-unused-brs",
