@@ -38,3 +38,10 @@ Output:
 ```
 3
 ```
+
+## Benchmark Results
+
+| Benchmark | Interpreter IC (ms) | Interpreter No IC (ms) |
+|---|---|---|
+| fib.js | 2113.6695 | 2583.5994 |
+| field_access.js | 34573.3989 | 13161.1394 |
