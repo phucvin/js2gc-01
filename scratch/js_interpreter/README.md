@@ -16,6 +16,14 @@ This will produce a `js_interpreter` binary.
 ./js_interpreter <path_to_js_file>
 ```
 
+## Running Testdata
+
+You can run all tests in `testdata/` using the provided script:
+
+```bash
+python3 scripts/run_testdata_with_js_interpreter.py
+```
+
 ## Example
 
 Running `testdata/add.js`:
