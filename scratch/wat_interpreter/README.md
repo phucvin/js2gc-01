@@ -17,6 +17,14 @@ This will produce a `wat_interpreter` binary.
 ./wat_interpreter <path_to_wat_file>
 ```
 
+## Testing
+
+To run the test suite against `testdata/*.wat`:
+
+```bash
+python3 ../../scripts/run_testdata_with_wat_interpreter.py
+```
+
 ## Example
 
 Running `testdata/add.wat`:
