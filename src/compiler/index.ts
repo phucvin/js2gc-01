@@ -11,7 +11,7 @@ export function compile(source: string, options?: CompilerOptions): string {
   // Default options
   const compilerOptions: CompilerOptions = {
       enableInlineCache: true,
-      enableStringRef: true,
+      enableStringRef: false,
       ...options
   };
 
