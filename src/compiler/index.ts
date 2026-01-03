@@ -11,8 +11,11 @@ export function compile(source: string, options?: CompilerOptions): string {
   // Default options
   const compilerOptions: CompilerOptions = {
       enableInlineCache: true,
+      enableStringRef: false,
       ...options
   };
+
+  const enableStringRef = compilerOptions.enableStringRef !== false;
 
   resetPropertyMap();
   resetGlobalCallSites();
@@ -114,10 +117,10 @@ export function compile(source: string, options?: CompilerOptions): string {
 
   (type $BoxedF64 (struct (field f64)))
   (type $BoxedI32 (struct (field i32)))
-  (type $BoxedString (struct (field (ref string))))
+  ${enableStringRef ? '(type $BoxedString (struct (field (ref string))))' : ''}
   (import "env" "print_i32" (func $print_i32 (param i32)))
   (import "env" "print_f64" (func $print_f64 (param f64)))
-  (import "env" "print_string" (func $print_string (param (ref string))))
+  ${enableStringRef ? '(import "env" "print_string" (func $print_string (param (ref string))))' : ''}
 
   (elem declare func $add_i32_i32 $add_f64_f64 $add_i32_f64 $add_f64_i32 $add_unsupported)
   (elem declare func $sub_i32_i32 $sub_f64_f64 $sub_i32_f64 $sub_f64_i32 $sub_unsupported)
@@ -250,7 +253,7 @@ export function compile(source: string, options?: CompilerOptions): string {
   (func $console_log (param $val anyref) (result anyref)
     (if (ref.is_null (local.get $val))
       (then
-        (call $print_string (string.const "null"))
+        ${enableStringRef ? '(call $print_string (string.const "null"))' : '(nop)'}
       )
       (else
         (if (ref.test (ref i31) (local.get $val))
@@ -268,6 +271,7 @@ export function compile(source: string, options?: CompilerOptions): string {
                     (call $print_f64 (struct.get $BoxedF64 0 (ref.cast (ref $BoxedF64) (local.get $val))))
                   )
                   (else
+                    ${enableStringRef ? `
                     (if (ref.test (ref $BoxedString) (local.get $val))
                       (then
                         (call $print_string (struct.get $BoxedString 0 (ref.cast (ref $BoxedString) (local.get $val))))
@@ -280,6 +284,7 @@ export function compile(source: string, options?: CompilerOptions): string {
                          )
                       )
                     )
+                    ` : '(nop)'}
                   )
                 )
               )

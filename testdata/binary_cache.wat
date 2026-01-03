@@ -12,16 +12,13 @@
  (type $ClosureSig1 (func (param anyref anyref) (result anyref)))
  (type $BoxedF64 (struct (field f64)))
  (type $BoxedI32 (struct (field i32)))
- (type $BoxedString (struct (field (ref string))))
- (type $12 (func (param i32)))
- (type $13 (func (param f64)))
- (type $14 (func (param (ref string))))
- (type $15 (func (param anyref) (result i32)))
- (type $16 (func (param anyref anyref (ref $BinaryOpCallSite)) (result anyref)))
- (type $17 (func (result anyref)))
- (import "env" "print_i32" (func $print_i32 (type $12) (param i32)))
- (import "env" "print_f64" (func $print_f64 (type $13) (param f64)))
- (import "env" "print_string" (func $print_string (type $14) (param (ref string))))
+ (type $11 (func (param i32)))
+ (type $12 (func (param f64)))
+ (type $13 (func (param anyref) (result i32)))
+ (type $14 (func (param anyref anyref (ref $BinaryOpCallSite)) (result anyref)))
+ (type $15 (func (result anyref)))
+ (import "env" "print_i32" (func $print_i32 (type $11) (param i32)))
+ (import "env" "print_f64" (func $print_f64 (type $12) (param f64)))
  (global $site_bin_0 (mut (ref $BinaryOpCallSite)) (struct.new $BinaryOpCallSite
   (i32.const 0)
   (i32.const 0)
@@ -60,9 +57,7 @@
     (local.get $val)
    )
    (then
-    (call $print_string
-     (string.const "null")
-    )
+    (nop)
    )
    (else
     (if
@@ -107,32 +102,7 @@
           )
          )
          (else
-          (if
-           (ref.test (ref $BoxedString)
-            (local.get $val)
-           )
-           (then
-            (call $print_string
-             (struct.get $BoxedString 0
-              (ref.cast (ref $BoxedString)
-               (local.get $val)
-              )
-             )
-            )
-           )
-           (else
-            (if
-             (ref.test (ref $Object)
-              (local.get $val)
-             )
-             (then
-              (call $print_string
-               (string.const "[object Object]")
-              )
-             )
-            )
-           )
-          )
+          (nop)
          )
         )
        )
@@ -143,7 +113,7 @@
   )
   (ref.null none)
  )
- (func $get_type_id (type $15) (param $val anyref) (result i32)
+ (func $get_type_id (type $13) (param $val anyref) (result i32)
   (if
    (ref.is_null
     (local.get $val)
@@ -247,7 +217,7 @@
  (func $add_unsupported (type $BinaryOpFunc) (param $0 anyref) (param $1 anyref) (result anyref)
   (ref.null none)
  )
- (func $add_slow (type $16) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+ (func $add_slow (type $14) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
   (local $t_lhs i32)
   (local $t_rhs i32)
   (local $target (ref null $BinaryOpFunc))
@@ -350,7 +320,7 @@
    )
   )
  )
- (func $add_cached (type $16) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+ (func $add_cached (type $14) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
   (if (result anyref)
    (i32.and
     (i32.eq
@@ -430,7 +400,7 @@
    )
   )
  )
- (func $main (type $17) (result anyref)
+ (func $main (type $15) (result anyref)
   (local $user_a anyref)
   (local $user_b anyref)
   (local $user_c anyref)
