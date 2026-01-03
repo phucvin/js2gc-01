@@ -59,13 +59,13 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
              // If options.enableInlineCache is false, we should use slow path.
 
              const options = ctx.getOptions();
-             const cacheGlobal = registerGlobalCallSite();
              const keyId = getPropertyId(varName);
 
              if (options.enableInlineCache !== false) {
+                 const cacheGlobal = registerGlobalCallSite();
                  valCode = `(call $get_field_cached (local.get $env) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
              } else {
-                 valCode = `(call $get_field_slow (local.get $env) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
+                 valCode = `(call $get_field_slow (local.get $env) (ref.null $CallSite) (i32.const ${keyId}))`;
              }
 
         } else {
@@ -224,20 +224,20 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
       if (expr.operatorToken.kind === ts.SyntaxKind.PlusToken) {
           const left = compileExpression(expr.left, ctx);
           const right = compileExpression(expr.right, ctx);
-          const siteName = registerBinaryOpCallSite();
           if (enableIC) {
+              const siteName = registerBinaryOpCallSite();
               return `(call $add_cached ${left} ${right} (global.get ${siteName}))`;
           } else {
-              return `(call $add_slow ${left} ${right} (global.get ${siteName}))`;
+              return `(call $add_slow ${left} ${right} (ref.null $BinaryOpCallSite))`;
           }
       } else if (expr.operatorToken.kind === ts.SyntaxKind.MinusToken) {
           const left = compileExpression(expr.left, ctx);
           const right = compileExpression(expr.right, ctx);
-          const siteName = registerBinaryOpCallSite();
           if (enableIC) {
+              const siteName = registerBinaryOpCallSite();
               return `(call $sub_cached ${left} ${right} (global.get ${siteName}))`;
           } else {
-              return `(call $sub_slow ${left} ${right} (global.get ${siteName}))`;
+              return `(call $sub_slow ${left} ${right} (ref.null $BinaryOpCallSite))`;
           }
       } else if (expr.operatorToken.kind === ts.SyntaxKind.LessThanToken) {
           const left = compileExpression(expr.left, ctx);
@@ -282,10 +282,13 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
 
               if (res.type === 'local') {
                   const tempLocal = ctx.getTempLocal('anyref');
-                  const siteName = registerBinaryOpCallSite();
-                  const addCall = enableIC
-                      ? `(call $add_cached (local.get ${tempLocal}) (ref.i31 (i32.const 1)) (global.get ${siteName}))`
-                      : `(call $add_slow (local.get ${tempLocal}) (ref.i31 (i32.const 1)) (global.get ${siteName}))`;
+                  let addCall;
+                  if (enableIC) {
+                      const siteName = registerBinaryOpCallSite();
+                      addCall = `(call $add_cached (local.get ${tempLocal}) (ref.i31 (i32.const 1)) (global.get ${siteName}))`;
+                  } else {
+                      addCall = `(call $add_slow (local.get ${tempLocal}) (ref.i31 (i32.const 1)) (ref.null $BinaryOpCallSite))`;
+                  }
 
                   return `(block (result anyref)
                       (local.set ${tempLocal} (local.get ${localName}))
@@ -301,15 +304,21 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
                   // Wait, compileExpression for Identifier handles captured access.
                   // But PostfixUnary manually generates get/set.
 
-                  const cacheGlobalGet = registerGlobalCallSite();
-                  const envGet = enableIC
-                      ? `(call $get_field_cached (ref.cast (ref $Object) (local.get $env)) (global.get ${cacheGlobalGet}) (i32.const ${keyId}))`
-                      : `(call $get_field_slow (ref.cast (ref $Object) (local.get $env)) (global.get ${cacheGlobalGet}) (i32.const ${keyId}))`;
+                  let envGet;
+                  if (enableIC) {
+                      const cacheGlobalGet = registerGlobalCallSite();
+                      envGet = `(call $get_field_cached (ref.cast (ref $Object) (local.get $env)) (global.get ${cacheGlobalGet}) (i32.const ${keyId}))`;
+                  } else {
+                      envGet = `(call $get_field_slow (ref.cast (ref $Object) (local.get $env)) (ref.null $CallSite) (i32.const ${keyId}))`;
+                  }
 
-                  const siteName = registerBinaryOpCallSite();
-                  const addCall = enableIC
-                      ? `(call $add_cached (local.get ${tempLocal}) (ref.i31 (i32.const 1)) (global.get ${siteName}))`
-                      : `(call $add_slow (local.get ${tempLocal}) (ref.i31 (i32.const 1)) (global.get ${siteName}))`;
+                  let addCall;
+                  if (enableIC) {
+                      const siteName = registerBinaryOpCallSite();
+                      addCall = `(call $add_cached (local.get ${tempLocal}) (ref.i31 (i32.const 1)) (global.get ${siteName}))`;
+                  } else {
+                      addCall = `(call $add_slow (local.get ${tempLocal}) (ref.i31 (i32.const 1)) (ref.null $BinaryOpCallSite))`;
+                  }
 
                   return `(block (result anyref)
                        (local.set ${tempLocal} ${envGet})
@@ -324,11 +333,11 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
       if (ts.isIdentifier(expr.name)) {
           const keyId = getPropertyId(expr.name.text);
           const objCode = compileExpression(expr.expression, ctx);
-          const cacheGlobal = registerGlobalCallSite();
           if (enableIC) {
+              const cacheGlobal = registerGlobalCallSite();
               return `(call $get_field_cached (ref.cast (ref $Object) ${objCode}) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
           } else {
-              return `(call $get_field_slow (ref.cast (ref $Object) ${objCode}) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
+              return `(call $get_field_slow (ref.cast (ref $Object) ${objCode}) (ref.null $CallSite) (i32.const ${keyId}))`;
           }
       }
   } else if (ts.isIdentifier(expr)) {
@@ -341,11 +350,11 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
           return `(local.get ${localName})`;
       } else if (res.type === 'captured') {
           const keyId = getPropertyId(localName);
-          const cacheGlobal = registerGlobalCallSite();
           if (enableIC) {
+              const cacheGlobal = registerGlobalCallSite();
               return `(call $get_field_cached (ref.cast (ref $Object) (local.get $env)) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
           } else {
-              return `(call $get_field_slow (ref.cast (ref $Object) (local.get $env)) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
+              return `(call $get_field_slow (ref.cast (ref $Object) (local.get $env)) (ref.null $CallSite) (i32.const ${keyId}))`;
           }
       }
 

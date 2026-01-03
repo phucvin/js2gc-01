@@ -218,7 +218,7 @@ export function compile(source: string, options?: CompilerOptions): string {
     (i32.const -1)
   )
 
-  (func $get_field_slow (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
+  (func $get_field_slow (param $obj (ref $Object)) (param $cache (ref null $CallSite)) (param $key i32) (result anyref)
     (local $offset i32)
     (local $shape (ref $Shape))
 
@@ -227,8 +227,13 @@ export function compile(source: string, options?: CompilerOptions): string {
 
     (if (i32.ge_s (local.get $offset) (i32.const 0))
       (then
-        (struct.set $CallSite $expected_shape (local.get $cache) (local.get $shape))
-        (struct.set $CallSite $offset (local.get $cache) (local.get $offset))
+        (if (ref.is_null (local.get $cache))
+          (then (nop))
+          (else
+            (struct.set $CallSite $expected_shape (local.get $cache) (local.get $shape))
+            (struct.set $CallSite $offset (local.get $cache) (local.get $offset))
+          )
+        )
         (return (array.get $Storage (struct.get $Object $storage (local.get $obj)) (local.get $offset)))
       )
     )
@@ -336,7 +341,7 @@ export function compile(source: string, options?: CompilerOptions): string {
     (ref.null any)
   )
 
-  (func $add_slow (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+  (func $add_slow (param $lhs anyref) (param $rhs anyref) (param $cache (ref null $BinaryOpCallSite)) (result anyref)
       (local $t_lhs i32)
       (local $t_rhs i32)
       (local $target (ref null $BinaryOpFunc))
@@ -369,9 +374,14 @@ export function compile(source: string, options?: CompilerOptions): string {
       )
 
       ;; Update cache
-      (struct.set $BinaryOpCallSite $type_lhs (local.get $cache) (local.get $t_lhs))
-      (struct.set $BinaryOpCallSite $type_rhs (local.get $cache) (local.get $t_rhs))
-      (struct.set $BinaryOpCallSite $target (local.get $cache) (local.get $target))
+      (if (ref.is_null (local.get $cache))
+        (then (nop))
+        (else
+          (struct.set $BinaryOpCallSite $type_lhs (local.get $cache) (local.get $t_lhs))
+          (struct.set $BinaryOpCallSite $type_rhs (local.get $cache) (local.get $t_rhs))
+          (struct.set $BinaryOpCallSite $target (local.get $cache) (local.get $target))
+        )
+      )
 
       (call_ref $BinaryOpFunc (local.get $lhs) (local.get $rhs) (ref.as_non_null (local.get $target)))
   )
@@ -423,7 +433,7 @@ export function compile(source: string, options?: CompilerOptions): string {
     (ref.null any)
   )
 
-  (func $sub_slow (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+  (func $sub_slow (param $lhs anyref) (param $rhs anyref) (param $cache (ref null $BinaryOpCallSite)) (result anyref)
       (local $t_lhs i32)
       (local $t_rhs i32)
       (local $target (ref null $BinaryOpFunc))
@@ -456,9 +466,14 @@ export function compile(source: string, options?: CompilerOptions): string {
       )
 
       ;; Update cache
-      (struct.set $BinaryOpCallSite $type_lhs (local.get $cache) (local.get $t_lhs))
-      (struct.set $BinaryOpCallSite $type_rhs (local.get $cache) (local.get $t_rhs))
-      (struct.set $BinaryOpCallSite $target (local.get $cache) (local.get $target))
+      (if (ref.is_null (local.get $cache))
+        (then (nop))
+        (else
+          (struct.set $BinaryOpCallSite $type_lhs (local.get $cache) (local.get $t_lhs))
+          (struct.set $BinaryOpCallSite $type_rhs (local.get $cache) (local.get $t_rhs))
+          (struct.set $BinaryOpCallSite $target (local.get $cache) (local.get $target))
+        )
+      )
 
       (call_ref $BinaryOpFunc (local.get $lhs) (local.get $rhs) (ref.as_non_null (local.get $target)))
   )

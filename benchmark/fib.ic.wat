@@ -15,8 +15,9 @@
  (type $11 (func (param i32)))
  (type $12 (func (param f64)))
  (type $13 (func (param anyref) (result i32)))
- (type $14 (func (param anyref anyref (ref $BinaryOpCallSite)) (result anyref)))
- (type $15 (func (result anyref)))
+ (type $14 (func (param anyref anyref (ref null $BinaryOpCallSite)) (result anyref)))
+ (type $15 (func (param anyref anyref (ref $BinaryOpCallSite)) (result anyref)))
+ (type $16 (func (result anyref)))
  (import "env" "print_i32" (func $print_i32 (type $11) (param i32)))
  (import "env" "print_f64" (func $print_f64 (type $12) (param f64)))
  (global $site_bin_0 (mut (ref $BinaryOpCallSite)) (struct.new $BinaryOpCallSite
@@ -202,7 +203,7 @@
  (func $add_unsupported (type $BinaryOpFunc) (param $0 anyref) (param $1 anyref) (result anyref)
   (ref.null none)
  )
- (func $add_slow (type $14) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+ (func $add_slow (type $14) (param $lhs anyref) (param $rhs anyref) (param $cache (ref null $BinaryOpCallSite)) (result anyref)
   (local $t_lhs i32)
   (local $t_rhs i32)
   (local $target (ref null $BinaryOpFunc))
@@ -285,17 +286,27 @@
     )
    )
   )
-  (struct.set $BinaryOpCallSite $type_lhs
-   (local.get $cache)
-   (local.get $t_lhs)
-  )
-  (struct.set $BinaryOpCallSite $type_rhs
-   (local.get $cache)
-   (local.get $t_rhs)
-  )
-  (struct.set $BinaryOpCallSite $target
-   (local.get $cache)
-   (local.get $target)
+  (if
+   (ref.is_null
+    (local.get $cache)
+   )
+   (then
+    (nop)
+   )
+   (else
+    (struct.set $BinaryOpCallSite $type_lhs
+     (local.get $cache)
+     (local.get $t_lhs)
+    )
+    (struct.set $BinaryOpCallSite $type_rhs
+     (local.get $cache)
+     (local.get $t_rhs)
+    )
+    (struct.set $BinaryOpCallSite $target
+     (local.get $cache)
+     (local.get $target)
+    )
+   )
   )
   (call_ref $BinaryOpFunc
    (local.get $lhs)
@@ -305,7 +316,7 @@
    )
   )
  )
- (func $add_cached (type $14) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+ (func $add_cached (type $15) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
   (if (result anyref)
    (i32.and
     (i32.eq
@@ -416,7 +427,7 @@
  (func $sub_unsupported (type $BinaryOpFunc) (param $0 anyref) (param $1 anyref) (result anyref)
   (ref.null none)
  )
- (func $sub_slow (type $14) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+ (func $sub_slow (type $14) (param $lhs anyref) (param $rhs anyref) (param $cache (ref null $BinaryOpCallSite)) (result anyref)
   (local $t_lhs i32)
   (local $t_rhs i32)
   (local $target (ref null $BinaryOpFunc))
@@ -499,17 +510,27 @@
     )
    )
   )
-  (struct.set $BinaryOpCallSite $type_lhs
-   (local.get $cache)
-   (local.get $t_lhs)
-  )
-  (struct.set $BinaryOpCallSite $type_rhs
-   (local.get $cache)
-   (local.get $t_rhs)
-  )
-  (struct.set $BinaryOpCallSite $target
-   (local.get $cache)
-   (local.get $target)
+  (if
+   (ref.is_null
+    (local.get $cache)
+   )
+   (then
+    (nop)
+   )
+   (else
+    (struct.set $BinaryOpCallSite $type_lhs
+     (local.get $cache)
+     (local.get $t_lhs)
+    )
+    (struct.set $BinaryOpCallSite $type_rhs
+     (local.get $cache)
+     (local.get $t_rhs)
+    )
+    (struct.set $BinaryOpCallSite $target
+     (local.get $cache)
+     (local.get $target)
+    )
+   )
   )
   (call_ref $BinaryOpFunc
    (local.get $lhs)
@@ -519,7 +540,7 @@
    )
   )
  )
- (func $sub_cached (type $14) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+ (func $sub_cached (type $15) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
   (if (result anyref)
    (i32.eq
     (call $get_type_id
@@ -653,7 +674,7 @@
    (global.get $site_bin_2)
   )
  )
- (func $main (type $15) (result anyref)
+ (func $main (type $16) (result anyref)
   (call $console_log
    (call $fib
     (ref.i31

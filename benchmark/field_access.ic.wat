@@ -20,10 +20,12 @@
  (type $16 (func (param (ref $Object) i32 anyref)))
  (type $17 (func (param (ref $Object) i32 anyref) (result anyref)))
  (type $18 (func (param (ref $Shape) i32) (result i32)))
- (type $19 (func (param (ref $Object) (ref $CallSite) i32) (result anyref)))
- (type $20 (func (param anyref) (result i32)))
- (type $21 (func (param anyref anyref (ref $BinaryOpCallSite)) (result anyref)))
- (type $22 (func (result anyref)))
+ (type $19 (func (param (ref $Object) (ref null $CallSite) i32) (result anyref)))
+ (type $20 (func (param (ref $Object) (ref $CallSite) i32) (result anyref)))
+ (type $21 (func (param anyref) (result i32)))
+ (type $22 (func (param anyref anyref (ref null $BinaryOpCallSite)) (result anyref)))
+ (type $23 (func (param anyref anyref (ref $BinaryOpCallSite)) (result anyref)))
+ (type $24 (func (result anyref)))
  (import "env" "print_i32" (func $print_i32 (type $11) (param i32)))
  (import "env" "print_f64" (func $print_f64 (type $12) (param f64)))
  (global $site_0 (mut (ref $CallSite)) (struct.new $CallSite
@@ -209,7 +211,7 @@
   )
   (i32.const -1)
  )
- (func $get_field_slow (type $19) (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
+ (func $get_field_slow (type $19) (param $obj (ref $Object)) (param $cache (ref null $CallSite)) (param $key i32) (result anyref)
   (local $offset i32)
   (local $shape (ref $Shape))
   (local.set $shape
@@ -229,13 +231,23 @@
     (i32.const 0)
    )
    (then
-    (struct.set $CallSite $expected_shape
-     (local.get $cache)
-     (local.get $shape)
-    )
-    (struct.set $CallSite $offset
-     (local.get $cache)
-     (local.get $offset)
+    (if
+     (ref.is_null
+      (local.get $cache)
+     )
+     (then
+      (nop)
+     )
+     (else
+      (struct.set $CallSite $expected_shape
+       (local.get $cache)
+       (local.get $shape)
+      )
+      (struct.set $CallSite $offset
+       (local.get $cache)
+       (local.get $offset)
+      )
+     )
     )
     (return
      (array.get $Storage
@@ -249,7 +261,7 @@
   )
   (ref.null none)
  )
- (func $get_field_cached (type $19) (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
+ (func $get_field_cached (type $20) (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
   (if
    (ref.eq
     (struct.get $Object $shape
@@ -340,7 +352,7 @@
   )
   (ref.null none)
  )
- (func $get_type_id (type $20) (param $val anyref) (result i32)
+ (func $get_type_id (type $21) (param $val anyref) (result i32)
   (if
    (ref.is_null
     (local.get $val)
@@ -444,7 +456,7 @@
  (func $add_unsupported (type $BinaryOpFunc) (param $0 anyref) (param $1 anyref) (result anyref)
   (ref.null none)
  )
- (func $add_slow (type $21) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+ (func $add_slow (type $22) (param $lhs anyref) (param $rhs anyref) (param $cache (ref null $BinaryOpCallSite)) (result anyref)
   (local $t_lhs i32)
   (local $t_rhs i32)
   (local $target (ref null $BinaryOpFunc))
@@ -527,17 +539,27 @@
     )
    )
   )
-  (struct.set $BinaryOpCallSite $type_lhs
-   (local.get $cache)
-   (local.get $t_lhs)
-  )
-  (struct.set $BinaryOpCallSite $type_rhs
-   (local.get $cache)
-   (local.get $t_rhs)
-  )
-  (struct.set $BinaryOpCallSite $target
-   (local.get $cache)
-   (local.get $target)
+  (if
+   (ref.is_null
+    (local.get $cache)
+   )
+   (then
+    (nop)
+   )
+   (else
+    (struct.set $BinaryOpCallSite $type_lhs
+     (local.get $cache)
+     (local.get $t_lhs)
+    )
+    (struct.set $BinaryOpCallSite $type_rhs
+     (local.get $cache)
+     (local.get $t_rhs)
+    )
+    (struct.set $BinaryOpCallSite $target
+     (local.get $cache)
+     (local.get $target)
+    )
+   )
   )
   (call_ref $BinaryOpFunc
    (local.get $lhs)
@@ -547,7 +569,7 @@
    )
   )
  )
- (func $add_cached (type $21) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+ (func $add_cached (type $23) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
   (if (result anyref)
    (i32.and
     (i32.eq
@@ -627,7 +649,7 @@
    )
   )
  )
- (func $main (type $22) (result anyref)
+ (func $main (type $24) (result anyref)
   (local $user_o anyref)
   (local $temp_0 (ref null $Object))
   (local $user_i anyref)
