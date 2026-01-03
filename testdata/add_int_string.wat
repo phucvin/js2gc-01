@@ -364,20 +364,17 @@
    )
   )
  )
- (func $main_calc (type $16) (result anyref)
-  (call $add_cached
-   (ref.i31
-    (i32.const 10)
-   )
-   (struct.new $BoxedString
-    (string.const "hello")
-   )
-   (global.get $site_bin_0)
-  )
- )
  (func $main (type $16) (result anyref)
   (call $console_log
-   (call $main_calc)
+   (call $add_cached
+    (ref.i31
+     (i32.const 10)
+    )
+    (struct.new $BoxedString
+     (string.const "hello")
+    )
+    (global.get $site_bin_0)
+   )
   )
  )
 )

@@ -109,14 +109,11 @@
   )
   (ref.null none)
  )
- (func $main_val (type $14) (result anyref)
-  (ref.i31
-   (i32.const 100)
-  )
- )
  (func $main (type $14) (result anyref)
   (call $console_log
-   (call $main_val)
+   (ref.i31
+    (i32.const 100)
+   )
   )
  )
 )

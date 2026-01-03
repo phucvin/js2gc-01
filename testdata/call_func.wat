@@ -114,12 +114,9 @@
    (i32.const 42)
   )
  )
- (func $main_calc (type $14) (result anyref)
-  (call $other)
- )
  (func $main (type $14) (result anyref)
   (call $console_log
-   (call $main_calc)
+   (call $other)
   )
  )
 )

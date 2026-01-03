@@ -109,14 +109,11 @@
   )
   (ref.null none)
  )
- (func $main_val (type $14) (result anyref)
-  (struct.new $BoxedString
-   (string.const "hello world")
-  )
- )
  (func $main (type $14) (result anyref)
   (call $console_log
-   (call $main_val)
+   (struct.new $BoxedString
+    (string.const "hello world")
+   )
   )
  )
 )

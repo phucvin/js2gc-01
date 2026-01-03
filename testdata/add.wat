@@ -374,16 +374,13 @@
    (i32.const 2)
   )
  )
- (func $main_calc (type $16) (result anyref)
-  (call $add_cached
-   (call $a)
-   (call $b)
-   (global.get $site_bin_0)
-  )
- )
  (func $main (type $16) (result anyref)
   (call $console_log
-   (call $main_calc)
+   (call $add_cached
+    (call $a)
+    (call $b)
+    (global.get $site_bin_0)
+   )
   )
  )
 )

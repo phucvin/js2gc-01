@@ -109,14 +109,11 @@
   )
   (ref.null none)
  )
- (func $main_val (type $14) (result anyref)
-  (struct.new $BoxedI32
-   (i32.const 1073741824)
-  )
- )
  (func $main (type $14) (result anyref)
   (call $console_log
-   (call $main_val)
+   (struct.new $BoxedI32
+    (i32.const 1073741824)
+   )
   )
  )
 )
