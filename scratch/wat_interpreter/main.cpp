@@ -19,7 +19,7 @@ int main(int argc, char** argv) {
     c.compileModule(mod);
 
     VM vm(c.getInstrs(), c.getFunctions(), c.getGlobals());
-    vm.run("$test", {});
+    vm.run("$main", {});
 
     return 0;
 }
