@@ -58,9 +58,7 @@ This runs a few iterations of each benchmark (min of 5) for both Wasm (if availa
 
 ## Benchmark Results
 
-| Benchmark | JS (JIT) (ms) | JS (JIT-less) (ms) | Wasm IC (ms) | Wasm No IC (ms) |
-|---|---|---|---|---|
-| fib.js | 528.74 | 579.42 | 43.65 | 50.18 |
-| field_access.js | 4.72 | 34.18 | 20.61 | 32.11 |
-
-*Note: Wasm execution is not supported in JIT-less mode.*
+| Benchmark | JS (ms) | Wasm IC (ms) | Wasm No IC (ms) | Ratio Wasm(IC)/JS | Ratio Wasm(NoIC)/JS |
+|---|---|---|---|---|---|
+| fib.js | 476.3173 | 43.2748 | 50.2297 | 0.09 | 0.11 |
+| field_access.js | 4.3636 | 20.2638 | 31.5961 | 4.64 | 7.24 |

@@ -48,6 +48,10 @@ async function run() {
         const binary = module.emitBinary();
         module.dispose();
 
+        const wasmPath = path.join(testDataDir, `${file.replace(/\.js$/, '.wasm')}`);
+        fs.writeFileSync(wasmPath, binary);
+        console.log(`WASM written to ${wasmPath}`);
+
         try {
             const compiled = await WebAssembly.compile(binary as any);
 
@@ -78,7 +82,7 @@ async function run() {
 
             console.log(`Execution output:\n${output}`);
 
-            const outPath = path.join(testDataDir, `${file.replace('.js', '.out')}`);
+            const outPath = path.join(testDataDir, `${file.replace(/\.js$/, '.out')}`);
             fs.writeFileSync(outPath, output);
             console.log(`Output written to ${outPath}`);
 
