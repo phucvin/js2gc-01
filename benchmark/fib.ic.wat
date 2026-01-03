@@ -687,7 +687,7 @@
   (call $console_log
    (call $fib
     (ref.i31
-     (i32.const 40)
+     (i32.const 30)
     )
    )
   )

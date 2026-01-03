@@ -1,17 +1,42 @@
-import binaryen from 'binaryen';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as vm from 'vm';
 import { fileURLToPath } from 'url';
 import { compile } from '../src/compiler.ts';
+import type Binaryen from 'binaryen';
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const projectRoot = path.resolve(__dirname, '..');
+// Helper to hold the loaded binaryen module
+let binaryen: typeof Binaryen | null = null;
+
+async function loadBinaryen() {
+    if (binaryen) return binaryen;
+    if (typeof WebAssembly === 'undefined') {
+        return null;
+    }
+    try {
+        const module = await import('binaryen');
+        binaryen = module.default as typeof Binaryen;
+        return binaryen;
+    } catch (e) {
+        console.warn("Could not load binaryen:", e);
+        return null;
+    }
+}
+
+// Assume running from project root
+const projectRoot = process.cwd();
 const benchmarkDir = path.join(projectRoot, 'benchmark');
 
 async function runBenchmark(jsSource: string, file: string, enableIC: boolean): Promise<{ duration: number, output: string }> {
     console.log(`Compiling to WAT (IC: ${enableIC})...`);
+
+    await loadBinaryen();
+
+    if (!binaryen || typeof WebAssembly === 'undefined') {
+        console.warn("Skipping Wasm benchmark because WebAssembly/Binaryen is not available.");
+        return { duration: Infinity, output: "" };
+    }
+
     let watText = "";
     try {
         watText = compile(jsSource, { enableInlineCache: enableIC });
@@ -23,7 +48,14 @@ async function runBenchmark(jsSource: string, file: string, enableIC: boolean): 
     const watPath = path.join(benchmarkDir, `${file.replace('.js', '')}.${enableIC ? 'ic' : 'no_ic'}.wat`);
     fs.writeFileSync(watPath, watText);
 
-    const module = binaryen.parseText(watText);
+    let module;
+    try {
+        module = binaryen.parseText(watText);
+    } catch(e) {
+         console.error(`Binaryen parseText failed for ${file} (IC: ${enableIC}):`, e);
+         return { duration: Infinity, output: "" };
+    }
+
     module.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes | binaryen.Features.Strings);
 
     if (!module.validate()) {
@@ -61,7 +93,6 @@ async function runBenchmark(jsSource: string, file: string, enableIC: boolean): 
             main();
             const end = performance.now();
             const duration = end - start;
-            // console.log(`Run ${i+1}: ${duration.toFixed(4)} ms`);
 
             if (duration < wasmDuration) {
                 wasmDuration = duration;
@@ -95,11 +126,16 @@ async function run() {
 
         // Run Wasm with IC
         const wasmIcResult = await runBenchmark(jsSource, file, true);
-        console.log(`Wasm IC Best Duration: ${wasmIcResult.duration.toFixed(4)} ms`);
+
+        if (wasmIcResult.duration !== Infinity) {
+             console.log(`Wasm IC Best Duration: ${wasmIcResult.duration.toFixed(4)} ms`);
+        }
 
         // Run Wasm without IC
         const wasmNoIcResult = await runBenchmark(jsSource, file, false);
-        console.log(`Wasm No IC Best Duration: ${wasmNoIcResult.duration.toFixed(4)} ms`);
+        if (wasmNoIcResult.duration !== Infinity) {
+            console.log(`Wasm No IC Best Duration: ${wasmNoIcResult.duration.toFixed(4)} ms`);
+        }
 
         // Prepare JS Execution
         let jsDuration = Infinity;
@@ -124,7 +160,6 @@ async function run() {
                     main();
                     const end = performance.now();
                     const duration = end - start;
-                    // console.log(`JS Run ${i+1}: ${duration.toFixed(4)} ms`);
 
                     if (duration < jsDuration) {
                         jsDuration = duration;
