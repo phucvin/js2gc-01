@@ -127,7 +127,11 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
           return `(struct.new $BoxedF64 (f64.const ${expr.text}))`;
       }
   } else if (ts.isStringLiteral(expr)) {
-    return `(struct.new $BoxedString (string.const "${expr.text}"))`;
+    if (ctx.getOptions().enableStringRef !== false) {
+        return `(struct.new $BoxedString (string.const "${expr.text}"))`;
+    } else {
+        return `(ref.null any)`;
+    }
   } else if (ts.isObjectLiteralExpression(expr)) {
       let shapeCode = `(call $new_root_shape)`;
       let offset = 0;
