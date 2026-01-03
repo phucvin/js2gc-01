@@ -16,19 +16,12 @@ RuntimeValue VM::run(string entry, vector<RuntimeValue> args) {
 }
 
 RuntimeValue VM::execInstrs(const std::vector<Instr>& code) {
-    // Execute a sequence of instructions independently
-    // Used for global initialization
-    // Simplified exec loop that doesn't use main instrs
     map<int, RuntimeValue> node_values;
     RuntimeValue last_val;
 
     for (size_t ip = 0; ip < code.size(); ++ip) {
         const Instr& i = code[ip];
         RuntimeValue res;
-
-        // Duplicate switch case logic... ideally refactor.
-        // For simplicity, we assume init exprs are simple (consts, struct.new)
-        // struct.new is needed.
 
         switch (i.op) {
             case Op::ConstI32: res.i_val = i.int_imm; res.type = 0; break;
@@ -43,7 +36,7 @@ RuntimeValue VM::execInstrs(const std::vector<Instr>& code) {
                 res.i_val = heap.size() - 1;
                 break;
             }
-             default: break; // Handle other ops if needed
+             default: break;
         }
         node_values[ip] = res;
         last_val = res;
@@ -64,14 +57,37 @@ RuntimeValue VM::exec(int start, int end, vector<RuntimeValue> args) {
         int next_ip = ip + 1;
 
         switch (i.op) {
+            case Op::Nop: break;
             case Op::ConstI32: res.i_val = i.int_imm; res.type = 0; break;
             case Op::ConstF64: res.f_val = i.float_imm; res.type = 0; break;
             case Op::ConstString: res.s_val = i.str_imm; res.type = 3; break;
             case Op::AddI32: res.i_val = node_values[i.children[0]].i_val + node_values[i.children[1]].i_val; break;
+            case Op::SubI32: res.i_val = node_values[i.children[0]].i_val - node_values[i.children[1]].i_val; break;
+            case Op::MulI32: res.i_val = node_values[i.children[0]].i_val * node_values[i.children[1]].i_val; break;
+            case Op::DivI32:
+                if (node_values[i.children[1]].i_val != 0)
+                    res.i_val = node_values[i.children[0]].i_val / node_values[i.children[1]].i_val;
+                break;
+            case Op::AddF64: res.f_val = node_values[i.children[0]].f_val + node_values[i.children[1]].f_val; break;
+            case Op::SubF64: res.f_val = node_values[i.children[0]].f_val - node_values[i.children[1]].f_val; break;
+            case Op::MulF64: res.f_val = node_values[i.children[0]].f_val * node_values[i.children[1]].f_val; break;
+            case Op::DivF64: res.f_val = node_values[i.children[0]].f_val / node_values[i.children[1]].f_val; break;
+
             case Op::EqI32:
                 res.i_val = (node_values[i.children[0]].i_val == node_values[i.children[1]].i_val);
                 break;
+            case Op::LtI32:
+                res.i_val = (node_values[i.children[0]].i_val < node_values[i.children[1]].i_val);
+                break;
+            case Op::GeI32:
+                res.i_val = (node_values[i.children[0]].i_val >= node_values[i.children[1]].i_val);
+                break;
+            case Op::EqzI32:
+                res.i_val = (node_values[i.children[0]].i_val == 0);
+                break;
             case Op::AndI32: res.i_val = (node_values[i.children[0]].i_val & node_values[i.children[1]].i_val); break;
+            case Op::ConvertI32ToF64: res.f_val = (double)node_values[i.children[0]].i_val; res.type = 0; break;
+
             case Op::LocalGet: res = locals[i.int_imm]; break;
             case Op::LocalSet: locals[i.int_imm] = node_values[i.children[0]]; break;
             case Op::GlobalGet: {
@@ -95,8 +111,6 @@ RuntimeValue VM::exec(int start, int end, vector<RuntimeValue> args) {
             }
             case Op::CallRef: {
                 vector<RuntimeValue> callArgs;
-                // children: arg1, arg2, ..., funcRef
-                // Last child is function ref
                 for(size_t k=0; k<i.children.size()-1; ++k) {
                     callArgs.push_back(node_values[i.children[k]]);
                 }
@@ -120,6 +134,10 @@ RuntimeValue VM::exec(int start, int end, vector<RuntimeValue> args) {
                 if (node_values[i.children[0]].i_val == 0) next_ip = i.target;
                 break;
             }
+            case Op::BrTrue: {
+                if (node_values[i.children[0]].i_val != 0) next_ip = i.target;
+                break;
+            }
             case Op::Jmp: next_ip = i.target; break;
             case Op::Return: return node_values[i.children[0]];
 
@@ -127,6 +145,9 @@ RuntimeValue VM::exec(int start, int end, vector<RuntimeValue> args) {
                 RuntimeValue val = node_values[i.children[0]];
                 bool match = false;
                 if (i.str_imm == "i31") match = (val.type == 1);
+                else if (i.str_imm == "$BoxedI32") match = (val.type == 2 && heap[val.i_val].type_name == "$BoxedI32");
+                else if (i.str_imm == "$BoxedF64") match = (val.type == 2 && heap[val.i_val].type_name == "$BoxedF64");
+                else if (i.str_imm == "$BoxedString") match = (val.type == 2 && heap[val.i_val].type_name == "$BoxedString");
                 else if (i.str_imm == "string") match = (val.type == 3);
                 else {
                         if (val.type == 2 && heap[val.i_val].type_name == i.str_imm) match = true;
@@ -150,8 +171,10 @@ RuntimeValue VM::exec(int start, int end, vector<RuntimeValue> args) {
             case Op::StructGet: {
                 RuntimeValue ref = node_values[i.children[0]];
                 if (ref.type == 2) {
-                    HeapObject& obj = heap[ref.i_val];
-                    if (i.int_imm >= 0 && i.int_imm < (int)obj.fields.size()) res = obj.fields[i.int_imm];
+                    if (ref.i_val >= 0 && ref.i_val < heap.size()) {
+                        HeapObject& obj = heap[ref.i_val];
+                        if (i.int_imm >= 0 && i.int_imm < (int)obj.fields.size()) res = obj.fields[i.int_imm];
+                    }
                 }
                 break;
             }
@@ -159,8 +182,92 @@ RuntimeValue VM::exec(int start, int end, vector<RuntimeValue> args) {
                 RuntimeValue ref = node_values[i.children[0]];
                 RuntimeValue val = node_values[i.children[1]];
                 if (ref.type == 2) {
-                    HeapObject& obj = heap[ref.i_val];
-                    if (i.int_imm >= 0 && i.int_imm < (int)obj.fields.size()) obj.fields[i.int_imm] = val;
+                    if (ref.i_val >= 0 && ref.i_val < heap.size()) {
+                        HeapObject& obj = heap[ref.i_val];
+                        if (i.int_imm >= 0 && i.int_imm < (int)obj.fields.size()) obj.fields[i.int_imm] = val;
+                    }
+                }
+                break;
+            }
+            case Op::ArrayNew: {
+                // array.new $Type (val) (size)
+                RuntimeValue val = node_values[i.children[0]];
+                RuntimeValue size = node_values[i.children[1]];
+                HeapObject obj;
+                obj.type_name = i.str_imm;
+                for (int k=0; k<size.i_val; ++k) obj.fields.push_back(val);
+                heap.push_back(obj);
+                res.type = 2;
+                res.i_val = heap.size() - 1;
+                break;
+            }
+            case Op::ArrayNewDefault: {
+                // array.new_default $Type (size)
+                RuntimeValue size = node_values[i.children[0]];
+                HeapObject obj;
+                obj.type_name = i.str_imm;
+                RuntimeValue def; // default 0/null
+                for (int k=0; k<size.i_val; ++k) obj.fields.push_back(def);
+                heap.push_back(obj);
+                res.type = 2;
+                res.i_val = heap.size() - 1;
+                break;
+            }
+            case Op::ArrayGet: {
+                RuntimeValue ref = node_values[i.children[0]];
+                RuntimeValue idx = node_values[i.children[1]];
+                if (ref.type == 2) {
+                    if (ref.i_val >= 0 && ref.i_val < heap.size()) {
+                        HeapObject& obj = heap[ref.i_val];
+                        if (idx.i_val >= 0 && idx.i_val < (int)obj.fields.size()) res = obj.fields[idx.i_val];
+                    }
+                }
+                break;
+            }
+            case Op::ArraySet: {
+                RuntimeValue ref = node_values[i.children[0]];
+                RuntimeValue idx = node_values[i.children[1]];
+                RuntimeValue val = node_values[i.children[2]];
+                if (ref.type == 2) {
+                    if (ref.i_val >= 0 && ref.i_val < heap.size()) {
+                        HeapObject& obj = heap[ref.i_val];
+                        if (idx.i_val >= 0 && idx.i_val < (int)obj.fields.size()) obj.fields[idx.i_val] = val;
+                    }
+                }
+                break;
+            }
+            case Op::ArrayLen: {
+                RuntimeValue ref = node_values[i.children[0]];
+                if (ref.type == 2) {
+                    if (ref.i_val >= 0 && ref.i_val < heap.size()) {
+                        HeapObject& obj = heap[ref.i_val];
+                        res.i_val = obj.fields.size();
+                    }
+                }
+                break;
+            }
+            case Op::ArrayCopy: {
+                // array.copy $DestType $SrcType (dest) (dest_offset) (src) (src_offset) (len)
+                RuntimeValue dest = node_values[i.children[0]];
+                RuntimeValue destOffset = node_values[i.children[1]];
+                RuntimeValue src = node_values[i.children[2]];
+                RuntimeValue srcOffset = node_values[i.children[3]];
+                RuntimeValue len = node_values[i.children[4]];
+
+                if (dest.type == 2 && src.type == 2) {
+                    if (dest.i_val >= 0 && dest.i_val < heap.size() && src.i_val >= 0 && src.i_val < heap.size()) {
+                        HeapObject& dObj = heap[dest.i_val];
+                        HeapObject& sObj = heap[src.i_val];
+
+                        // Check bounds? For now assume valid
+                        for(int k=0; k<len.i_val; ++k) {
+                            int dIdx = destOffset.i_val + k;
+                            int sIdx = srcOffset.i_val + k;
+                            if (dIdx < dObj.fields.size() && sIdx < sObj.fields.size()) {
+                                dObj.fields[dIdx] = sObj.fields[sIdx];
+                            }
+                        }
+                    }
                 }
                 break;
             }
@@ -168,7 +275,7 @@ RuntimeValue VM::exec(int start, int end, vector<RuntimeValue> args) {
         }
 
         node_values[ip] = res;
-        if (i.op != Op::Jmp && i.op != Op::BrFalse && i.op != Op::LocalSet && i.op != Op::StructSet) last_val = res;
+        if (i.op != Op::Jmp && i.op != Op::BrFalse && i.op != Op::BrTrue && i.op != Op::LocalSet && i.op != Op::StructSet && i.op != Op::ArraySet && i.op != Op::ArrayCopy) last_val = res;
         ip = next_ip;
     }
     return last_val;

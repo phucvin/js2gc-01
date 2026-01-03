@@ -5,6 +5,13 @@
 #include "ir.h"
 #include "sexpr.h"
 
+struct BlockScope {
+    std::string label;
+    int start_instr; // For loops, this is the jump target
+    bool is_loop;
+    std::vector<int> patches; // Instructions (br/br_if) needing patching to end of block
+};
+
 class Compiler {
     std::vector<Instr> instrs;
     std::map<std::string, Function> functions;
@@ -13,6 +20,7 @@ class Compiler {
 
     std::vector<int> stack;
     std::map<std::string, int> local_map;
+    std::vector<BlockScope> control_stack;
 
     std::string getTypeName(const SExpr& e);
 
@@ -30,4 +38,5 @@ public:
     void compileFunc(const SExpr& f);
     void compileExpr(const SExpr& e);
     void handleIf(const SExpr& e);
+    void handleBlock(const SExpr& e, bool is_loop);
 };

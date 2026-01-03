@@ -5,12 +5,19 @@
 
 enum class Op {
     ConstI32, ConstF64, ConstString,
-    AddI32, AddF64, EqI32, AndI32,
+    AddI32, SubI32, MulI32, DivI32,
+    AddF64, SubF64, MulF64, DivF64,
+    EqI32, NeI32, LtI32, GtI32, LeI32, GeI32,
+    EqF64, NeF64, LtF64, GtF64, LeF64, GeF64,
+    AndI32, OrI32, XorI32,
+    EqzI32,
+    ConvertI32ToF64,
     LocalGet, LocalSet, GlobalGet,
     Call, CallRef,
     StructNew, StructGet, StructSet,
+    ArrayNew, ArrayNewDefault, ArrayGet, ArraySet, ArrayLen, ArrayCopy,
     RefI31, I31GetS, RefCast, RefTest, RefNull, RefIsNull, RefFunc, RefAsNonNull,
-    BrFalse, Jmp, Return,
+    BrFalse, BrTrue, Jmp, Return,
     Nop
 };
 
