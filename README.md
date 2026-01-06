@@ -7,6 +7,31 @@ A basic compiler structure that compiles simple JavaScript to WebAssembly Text (
 - Node.js (with `--experimental-wasm-stringref` support)
 - TypeScript
 
+## Feature Checklist
+
+Here are the 20 most important JavaScript features for a compiler, with their implementation status:
+
+- [x] **Variables (`let`)**: Declaration and initialization of local variables.
+- [x] **Data Types: Numbers**: Integers (i32) and Floats (f64), with boxing.
+- [x] **Data Types: Booleans**: True/False values (mapped to 1/0).
+- [ ] **Data Types: Strings**: Basic string support and operations (concatenation). *Partial: Literals only.*
+- [ ] **Data Types: Arrays**: Array literals and access.
+- [x] **Data Types: Objects**: Object literals and dynamic property access.
+- [x] **Arithmetic Operators (`+`, `-`)**: Addition and subtraction.
+- [ ] **Arithmetic Operators (`*`, `/`, `%`)**: Multiplication, division, and modulus.
+- [x] **Assignment Operator (`=`)**: Assigning values to variables and properties.
+- [x] **Comparison Operator (`<`)**: Less-than comparison.
+- [ ] **Comparison Operators (`==`, `>`, etc.)**: Equality and other relational operators.
+- [ ] **Logical Operators (`&&`, `||`)**: Logical AND and OR.
+- [x] **Control Flow: `if` / `else`**: Conditional execution.
+- [x] **Control Flow: `for` loop**: Iteration.
+- [ ] **Control Flow: `while` loop**: While loops.
+- [x] **Function Declarations**: Named functions.
+- [x] **Arrow Functions / Expressions**: Anonymous functions and closures.
+- [x] **Closures**: Capturing variables from outer scopes.
+- [x] **Property Access**: Dot notation (`obj.prop`) with Inline Caching.
+- [x] **Console Output**: `console.log` for debugging.
+
 ## Usage
 
 ### Compilation
