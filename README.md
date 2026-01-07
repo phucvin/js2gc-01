@@ -60,5 +60,12 @@ This runs a few iterations of each benchmark (min of 5) for both Wasm (if availa
 
 | Benchmark | JS (ms) | Wasm IC (ms) | Wasm No IC (ms) | Ratio Wasm(IC)/JS | Ratio Wasm(NoIC)/JS |
 |---|---|---|---|---|---|
-| fib.js | 55969.0191 | 5380.3333 | 5733.5304 | 0.10 | 0.10 |
-| field_access.js | 4.1891 | 20.4273 | 29.3236 | 4.88 | 7.00 |
+| fib.js | 55340.1920 | 5243.5741 | 5730.6298 | 0.09 | 0.10 |
+| field_access.js | 4.4344 | 20.1486 | 29.1177 | 4.54 | 6.57 |
+
+## Wasmtime Benchmark Results
+
+| Benchmark | Wasmtime IC (ms) | Wasmtime No IC (ms) |
+|---|---|---|
+| fib.js | Error | Error |
+| field_access.js | Error | Error |
