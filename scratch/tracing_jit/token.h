@@ -1,0 +1,23 @@
+#ifndef TOKEN_H
+#define TOKEN_H
+
+#include <string>
+
+enum TokenType {
+    TOK_FUNCTION, TOK_RETURN, TOK_EXPORT, TOK_VAR, TOK_LET, TOK_CONST, TOK_IF, TOK_ELSE,
+    TOK_WHILE, TOK_FOR, TOK_NEW,
+    TOK_IDENTIFIER, TOK_NUMBER, TOK_STRING,
+    TOK_PLUS, TOK_MINUS, TOK_STAR, TOK_SLASH, TOK_ASSIGN, TOK_ARROW,
+    TOK_INC, TOK_DEC,
+    TOK_LPAREN, TOK_RPAREN, TOK_LBRACE, TOK_RBRACE, TOK_LBRACKET, TOK_RBRACKET,
+    TOK_COMMA, TOK_DOT, TOK_COLON, TOK_SEMICOLON, TOK_EOF,
+    TOK_LT, TOK_GT
+};
+
+struct Token {
+    TokenType type;
+    std::string text;
+    int line;
+};
+
+#endif // TOKEN_H
