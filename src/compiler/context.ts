@@ -41,7 +41,6 @@ export function resetGeneratedFunctions() {
 
 export interface CompilerOptions {
     enableInlineCache?: boolean;
-    enableStringRef?: boolean;
 }
 
 export class CompilationContext {

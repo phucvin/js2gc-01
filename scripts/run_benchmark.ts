@@ -56,7 +56,7 @@ async function runBenchmark(jsSource: string, file: string, enableIC: boolean): 
          return { duration: Infinity, output: "" };
     }
 
-    module.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes | binaryen.Features.Strings);
+    module.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes);
 
     if (!module.validate()) {
         console.error(`Validation failed for ${file} (IC: ${enableIC})`);
@@ -81,7 +81,14 @@ async function runBenchmark(jsSource: string, file: string, enableIC: boolean): 
                 env: {
                     print_i32: (val: number) => { currentOutput += val + "\n"; },
                     print_f64: (val: number) => { currentOutput += val + "\n"; },
-                    print_string: (val: string) => { currentOutput += val + "\n"; },
+                    print_string: (val: any) => {
+                        // val is an array i8 (Wasm GC array)
+                        // In Node.js with V8 GC, this might be an object
+                        // We can try to convert it if possible, or just print a placeholder
+                        // Since we can't easily read WasmGC arrays from JS without experimental APIs that change:
+                        // We'll just print [String]
+                        currentOutput += "[String]\n";
+                    },
                 }
             };
             const instance = await WebAssembly.instantiate(compiled, imports);
