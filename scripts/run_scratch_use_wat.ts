@@ -22,8 +22,8 @@ async function run() {
         console.log("Parsing...");
         const module = binaryen.parseText(watText);
 
-        console.log("Setting features (GC | ReferenceTypes)...");
-        module.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes);
+        console.log("Setting features (GC | ReferenceTypes | Strings)...");
+        module.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes | binaryen.Features.Strings);
 
         if (!module.validate()) {
             console.error(`Validation failed for ${file}`);
