@@ -56,7 +56,7 @@ async function runBenchmark(jsSource: string, file: string, enableIC: boolean): 
          return { duration: Infinity, output: "" };
     }
 
-    module.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes | binaryen.Features.Strings);
+    module.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes);
 
     if (!module.validate()) {
         console.error(`Validation failed for ${file} (IC: ${enableIC})`);
@@ -81,7 +81,7 @@ async function runBenchmark(jsSource: string, file: string, enableIC: boolean): 
                 env: {
                     print_i32: (val: number) => { currentOutput += val + "\n"; },
                     print_f64: (val: number) => { currentOutput += val + "\n"; },
-                    print_string: (val: string) => { currentOutput += val + "\n"; },
+                    print_char: (val: number) => { currentOutput += String.fromCharCode(val); },
                 }
             };
             const instance = await WebAssembly.instantiate(compiled, imports);

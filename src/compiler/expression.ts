@@ -127,11 +127,9 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
           return `(struct.new $BoxedF64 (f64.const ${expr.text}))`;
       }
   } else if (ts.isStringLiteral(expr)) {
-    if (ctx.getOptions().enableStringRef !== false) {
-        return `(struct.new $BoxedString (string.const "${expr.text}"))`;
-    } else {
-        return `(ref.null any)`;
-    }
+      const bytes = Buffer.from(expr.text, 'utf8');
+      const byteStr = Array.from(bytes).map(b => `(i32.const ${b})`).join(' ');
+      return `(array.new_fixed $String ${bytes.length} ${byteStr})`;
   } else if (ts.isObjectLiteralExpression(expr)) {
       let shapeCode = `(call $new_root_shape)`;
       let offset = 0;

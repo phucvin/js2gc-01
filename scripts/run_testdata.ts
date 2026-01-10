@@ -37,8 +37,8 @@ async function run() {
         console.log("Parsing WAT with Binaryen...");
         const module = binaryen.parseText(watText);
 
-        console.log("Setting features (GC | ReferenceTypes | Strings)...");
-        module.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes | binaryen.Features.Strings);
+        console.log("Setting features (GC | ReferenceTypes)...");
+        module.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes);
 
         if (!module.validate()) {
             console.error(`Validation failed for ${file}`);
@@ -60,7 +60,7 @@ async function run() {
                 env: {
                     print_i32: (val: number) => { output += val + "\n"; },
                     print_f64: (val: number) => { output += val + "\n"; },
-                    print_string: (val: string) => { output += val + "\n"; },
+                    print_char: (val: number) => { output += String.fromCharCode(val); },
                 }
             };
 
