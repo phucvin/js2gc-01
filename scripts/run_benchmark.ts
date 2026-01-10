@@ -81,14 +81,7 @@ async function runBenchmark(jsSource: string, file: string, enableIC: boolean): 
                 env: {
                     print_i32: (val: number) => { currentOutput += val + "\n"; },
                     print_f64: (val: number) => { currentOutput += val + "\n"; },
-                    print_string: (val: any) => {
-                        // val is an array i8 (Wasm GC array)
-                        // In Node.js with V8 GC, this might be an object
-                        // We can try to convert it if possible, or just print a placeholder
-                        // Since we can't easily read WasmGC arrays from JS without experimental APIs that change:
-                        // We'll just print [String]
-                        currentOutput += "[String]\n";
-                    },
+                    print_char: (val: number) => { currentOutput += String.fromCharCode(val); },
                 }
             };
             const instance = await WebAssembly.instantiate(compiled, imports);

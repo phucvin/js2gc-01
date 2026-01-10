@@ -22,7 +22,7 @@ async function run() {
         console.log("Parsing...");
         const module = binaryen.parseText(watText);
 
-        console.log("Setting features (GC | ReferenceTypes | Strings)...");
+        console.log("Setting features (GC | ReferenceTypes)...");
         module.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes);
 
         if (!module.validate()) {

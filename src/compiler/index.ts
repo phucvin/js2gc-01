@@ -118,11 +118,10 @@ export function compile(source: string, options?: CompilerOptions): string {
   (type $BoxedF64 (struct (field f64)))
   (type $BoxedI32 (struct (field i32)))
   (type $String (array (mut i8)))
-  (type $BoxedString (struct (field (ref $String))))
 
   (import "env" "print_i32" (func $print_i32 (param i32)))
   (import "env" "print_f64" (func $print_f64 (param f64)))
-  (import "env" "print_string" (func $print_string (param (ref $String))))
+  (import "env" "print_char" (func $print_char (param i32)))
 
   (elem declare func $add_i32_i32 $add_f64_f64 $add_i32_f64 $add_f64_i32 $add_unsupported)
   (elem declare func $sub_i32_i32 $sub_f64_f64 $sub_i32_f64 $sub_f64_i32 $sub_unsupported)
@@ -254,10 +253,27 @@ export function compile(source: string, options?: CompilerOptions): string {
     (call $get_field_slow (local.get $obj) (local.get $cache) (local.get $key))
   )` : ''}
 
+  (func $print_string_helper (param $str (ref $String))
+    (local $len i32)
+    (local $i i32)
+    (local.set $len (array.len (local.get $str)))
+    (local.set $i (i32.const 0))
+    (loop $l
+      (if (i32.lt_u (local.get $i) (local.get $len))
+        (then
+          (call $print_char (array.get_u $String (local.get $str) (local.get $i)))
+          (local.set $i (i32.add (local.get $i) (i32.const 1)))
+          (br $l)
+        )
+      )
+    )
+  )
+
   (func $console_log (param $val anyref) (result anyref)
     (if (ref.is_null (local.get $val))
       (then
-        (call $print_string (array.new_fixed $String 4 (i32.const 110) (i32.const 117) (i32.const 108) (i32.const 108)))
+        (call $print_string_helper (array.new_fixed $String 4 (i32.const 110) (i32.const 117) (i32.const 108) (i32.const 108)))
+        (call $print_char (i32.const 10))
       )
       (else
         (if (ref.test (ref i31) (local.get $val))
@@ -275,14 +291,16 @@ export function compile(source: string, options?: CompilerOptions): string {
                     (call $print_f64 (struct.get $BoxedF64 0 (ref.cast (ref $BoxedF64) (local.get $val))))
                   )
                   (else
-                    (if (ref.test (ref $BoxedString) (local.get $val))
+                    (if (ref.test (ref $String) (local.get $val))
                       (then
-                        (call $print_string (struct.get $BoxedString 0 (ref.cast (ref $BoxedString) (local.get $val))))
+                        (call $print_string_helper (ref.cast (ref $String) (local.get $val)))
+                        (call $print_char (i32.const 10))
                       )
                       (else
                          (if (ref.test (ref $Object) (local.get $val))
                            (then
-                             (call $print_string (array.new_fixed $String 15 (i32.const 91) (i32.const 111) (i32.const 98) (i32.const 106) (i32.const 101) (i32.const 99) (i32.const 116) (i32.const 32) (i32.const 79) (i32.const 98) (i32.const 106) (i32.const 101) (i32.const 99) (i32.const 116) (i32.const 93)))
+                             (call $print_string_helper (array.new_fixed $String 15 (i32.const 91) (i32.const 111) (i32.const 98) (i32.const 106) (i32.const 101) (i32.const 99) (i32.const 116) (i32.const 32) (i32.const 79) (i32.const 98) (i32.const 106) (i32.const 101) (i32.const 99) (i32.const 116) (i32.const 93)))
+                             (call $print_char (i32.const 10))
                            )
                          )
                       )
