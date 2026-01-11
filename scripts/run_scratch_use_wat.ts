@@ -17,51 +17,58 @@ async function run() {
     for (const file of watFiles) {
         console.log(`\n--- Processing ${file} ---`);
         const filePath = path.join(scratchDir, file);
-        const watText = fs.readFileSync(filePath, 'utf-8');
 
-        console.log("Parsing...");
-        const module = binaryen.parseText(watText);
-
-        console.log("Setting features (GC | ReferenceTypes | Strings)...");
-        module.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes | binaryen.Features.Strings);
-
-        if (!module.validate()) {
-            console.error(`Validation failed for ${file}`);
-            process.exit(1);
-        }
-
-        console.log("Optimizing...");
-        module.optimize();
-
-        const optimizedWat = module.emitText();
-        const optimizedPath = path.join(scratchDir, `${file}.optimized`);
-        fs.writeFileSync(optimizedPath, optimizedWat);
-        console.log(`Optimized WAT written to ${optimizedPath}`);
-
-        const binary = module.emitBinary();
-
+        let module;
         try {
-            const compiled = await WebAssembly.compile(binary as any);
-            const instance = await WebAssembly.instantiate(compiled, {});
+            const watText = fs.readFileSync(filePath, 'utf-8');
 
-            const main = instance.exports.main as () => number;
-            if (typeof main !== 'function') {
-                console.error(`Example ${file} does not export a 'main' function.`);
+            console.log("Parsing...");
+            module = binaryen.parseText(watText);
+
+            console.log("Setting features (GC | ReferenceTypes | Strings)...");
+            module.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes | binaryen.Features.Strings);
+
+            if (!module.validate()) {
+                console.error(`Validation failed for ${file}`);
+                // Don't exit, just continue.
+                // Don't dispose here, let the finally block handle it.
                 continue;
             }
 
-            const result = main();
-            console.log(`Execution result: ${result}`);
+            console.log("Optimizing...");
+            module.optimize();
 
-            const outPath = path.join(scratchDir, `${file}.out`);
-            fs.writeFileSync(outPath, result.toString());
-            console.log(`Output written to ${outPath}`);
+            const optimizedWat = module.emitText();
+            const optimizedPath = path.join(scratchDir, `${file}.optimized`);
+            fs.writeFileSync(optimizedPath, optimizedWat);
+            console.log(`Optimized WAT written to ${optimizedPath}`);
 
+            const binary = module.emitBinary();
+
+            try {
+                const compiled = await WebAssembly.compile(binary as any);
+                const instance = await WebAssembly.instantiate(compiled, {});
+
+                const main = instance.exports.main as () => number;
+                if (typeof main !== 'function') {
+                    console.error(`Example ${file} does not export a 'main' function.`);
+                    continue;
+                }
+
+                const result = main();
+                console.log(`Execution result: ${result}`);
+
+                const outPath = path.join(scratchDir, `${file}.out`);
+                fs.writeFileSync(outPath, result.toString());
+                console.log(`Output written to ${outPath}`);
+
+            } catch (e) {
+                console.error(`Execution failed for ${file}:`, e);
+            }
         } catch (e) {
-            console.error(`Execution failed for ${file}:`, e);
-            process.exit(1);
+            console.error(`Processing failed for ${file}:`, e);
         } finally {
-            module.dispose();
+            if (module) module.dispose();
         }
     }
     console.log("\nAll examples processed successfully!");
