@@ -45,7 +45,7 @@ To run benchmarks:
 2.  Run the benchmark:
 
     ```bash
-    node --experimental-wasm-stringref bench_runner.js
+    node bench_runner.js
     ```
 
     To run in JIT-less mode (skips WebAssembly):
@@ -60,5 +60,5 @@ This runs a few iterations of each benchmark (min of 5) for both Wasm (if availa
 
 | Benchmark | JS (ms) | Wasm IC (ms) | Wasm No IC (ms) | Ratio Wasm(IC)/JS | Ratio Wasm(NoIC)/JS |
 |---|---|---|---|---|---|
-| fib.js | 54119.1018 | 5288.5985 | 5693.0246 | 0.10 | 0.11 |
-| field_access.js | 4.3695 | 20.4479 | 24.4684 | 4.68 | 5.60 |
+| fib.js | 691.6350 | 1253.9150 | 1653.9250 | 1.81 | 2.39 |
+| field_access.js | 1.4650 | 2.9650 | 2.7100 | 2.02 | 1.85 |
