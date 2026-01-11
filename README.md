@@ -4,7 +4,7 @@ A basic compiler structure that compiles simple JavaScript to WebAssembly Text (
 
 ## Prerequisites
 
-- Node.js (with `--experimental-wasm-stringref` support)
+- Node.js
 - TypeScript
 
 ## Usage
@@ -20,7 +20,7 @@ To run the tests:
 1.  Compile the TypeScript files and run the test runner:
 
     ```bash
-    node --experimental-wasm-stringref node_modules/ts-node/dist/bin.js scripts/run_testdata.ts
+    node node_modules/ts-node/dist/bin.js scripts/run_testdata.ts
     ```
 
     The runner will:
