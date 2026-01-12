@@ -1,7 +1,7 @@
 import ts from 'typescript';
 import binaryen from 'binaryen';
 import { compileFunction } from './function.ts';
-import { resetPropertyMap, resetGlobalCallSites, globalCallSites, generatedFunctions, resetGeneratedFunctions, binaryOpCallSites, type CompilerOptions, resetStringMap, stringDataSegments } from './context.ts';
+import { resetPropertyMap, resetGlobalCallSites, globalCallSites, generatedFunctions, resetGeneratedFunctions, binaryOpCallSites, type CompilerOptions, resetStringMap, stringDataSegments, registerStringLiteral } from './context.ts';
 import { resetClosureCounter } from './expression.ts';
 
 // Export for other files to use if needed
@@ -22,6 +22,9 @@ export function compile(source: string, options?: CompilerOptions): string {
   resetGeneratedFunctions();
   resetClosureCounter();
   resetStringMap();
+
+  const nullData = registerStringLiteral("null");
+  const objData = registerStringLiteral("[object Object]");
 
   const sourceFile = ts.createSourceFile(
     'temp.js',
@@ -138,8 +141,8 @@ export function compile(source: string, options?: CompilerOptions): string {
   (global $g_str_obj (mut (ref null $String)) (ref.null $String))
 
   (func $runtime_init
-    (global.set $g_str_null (array.new_fixed $String 4 (i32.const 110) (i32.const 117) (i32.const 108) (i32.const 108)))
-    (global.set $g_str_obj (array.new_fixed $String 15 (i32.const 91) (i32.const 111) (i32.const 98) (i32.const 106) (i32.const 101) (i32.const 99) (i32.const 116) (i32.const 32) (i32.const 79) (i32.const 98) (i32.const 106) (i32.const 101) (i32.const 99) (i32.const 116) (i32.const 93)))
+    (global.set $g_str_null (array.new_data $String ${nullData} (i32.const 0) (i32.const 4)))
+    (global.set $g_str_obj (array.new_data $String ${objData} (i32.const 0) (i32.const 15)))
   )
   (start $runtime_init)
 
