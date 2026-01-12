@@ -48,6 +48,7 @@ The inline cache mechanism loads the object's shape to compare it. If the check 
 
 **Status:**
 Short-circuiting logic using `br_if` has been implemented for basic checks, replacing eager `i32.and`.
+**Reuse Loaded Shape:** Implemented.
 
 **Optimization:**
 -   **Reuse Loaded Shape:** Reuse the loaded shape (via `local.tee`) when passing control to the slow path helper to avoid redundant memory access.

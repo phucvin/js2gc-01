@@ -21,12 +21,13 @@
  (type $17 (func (param (ref $Shape) i32) (result (ref $Object))))
  (type $18 (func (param (ref $Object) i32 anyref)))
  (type $19 (func (param (ref $Shape) i32) (result i32)))
- (type $20 (func (param (ref $Object) (ref $CallSite) i32) (result anyref)))
- (type $21 (func (param (ref $String))))
- (type $22 (func (param anyref)))
- (type $23 (func (param anyref) (result i32)))
- (type $24 (func (param anyref anyref (ref $BinaryOpCallSite)) (result anyref)))
- (type $25 (func (result anyref)))
+ (type $20 (func (param (ref $Object) (ref $Shape) (ref $CallSite) i32) (result anyref)))
+ (type $21 (func (param (ref $Object) (ref $CallSite) i32) (result anyref)))
+ (type $22 (func (param (ref $String))))
+ (type $23 (func (param anyref)))
+ (type $24 (func (param anyref) (result i32)))
+ (type $25 (func (param anyref anyref (ref $BinaryOpCallSite)) (result anyref)))
+ (type $26 (func (result anyref)))
  (import "env" "print_i32" (func $print_i32 (type $12) (param i32)))
  (import "env" "print_f64" (func $print_f64 (type $13) (param f64)))
  (import "env" "print_char" (func $print_char (type $12) (param i32)))
@@ -230,14 +231,8 @@
   )
   (i32.const -1)
  )
- (func $get_field_slow (type $20) (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
+ (func $get_field_resolve (type $20) (param $obj (ref $Object)) (param $shape (ref $Shape)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
   (local $offset i32)
-  (local $shape (ref $Shape))
-  (local.set $shape
-   (struct.get $Object $shape
-    (local.get $obj)
-   )
-  )
   (local.set $offset
    (call $lookup_in_shape
     (local.get $shape)
@@ -270,12 +265,16 @@
   )
   (ref.null none)
  )
- (func $get_field_cached (type $20) (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
+ (func $get_field_cached (type $21) (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
+  (local $shape (ref $Shape))
+  (local.set $shape
+   (struct.get $Object $shape
+    (local.get $obj)
+   )
+  )
   (if
    (ref.eq
-    (struct.get $Object $shape
-     (local.get $obj)
-    )
+    (local.get $shape)
     (struct.get $CallSite $expected_shape
      (local.get $cache)
     )
@@ -293,13 +292,14 @@
     )
    )
   )
-  (call $get_field_slow
+  (call $get_field_resolve
    (local.get $obj)
+   (local.get $shape)
    (local.get $cache)
    (local.get $key)
   )
  )
- (func $print_string_helper (type $21) (param $str (ref $String))
+ (func $print_string_helper (type $22) (param $str (ref $String))
   (local $len i32)
   (local $i i32)
   (local.set $len
@@ -334,7 +334,7 @@
    )
   )
  )
- (func $console_log (type $22) (param $val anyref)
+ (func $console_log (type $23) (param $val anyref)
   (block $null
    (drop
     (br_on_null $null
@@ -407,7 +407,7 @@
    (i32.const 10)
   )
  )
- (func $get_type_id (type $23) (param $val anyref) (result i32)
+ (func $get_type_id (type $24) (param $val anyref) (result i32)
   (if
    (ref.is_null
     (local.get $val)
@@ -511,7 +511,7 @@
  (func $add_unsupported (type $BinaryOpFunc) (param $0 anyref) (param $1 anyref) (result anyref)
   (ref.null none)
  )
- (func $add_slow (type $24) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+ (func $add_slow (type $25) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
   (local $t_lhs i32)
   (local $t_rhs i32)
   (local $target (ref null $BinaryOpFunc))
@@ -614,7 +614,7 @@
    )
   )
  )
- (func $add_cached (type $24) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+ (func $add_cached (type $25) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
   (block $slow
    (br_if $slow
     (i32.ne
@@ -654,7 +654,7 @@
    (local.get $cache)
   )
  )
- (func $main (type $25) (result anyref)
+ (func $main (type $26) (result anyref)
   (local $user_obj anyref)
   (local $temp_0 (ref null $Object))
   (local $temp_1 (ref null $Object))

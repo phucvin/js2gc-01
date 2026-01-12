@@ -16,8 +16,9 @@
  (type $12 (func (param (ref $Shape) i32) (result (ref $Object))))
  (type $13 (func (param (ref $Object) i32 anyref)))
  (type $14 (func (param (ref $Shape) i32) (result i32)))
- (type $15 (func (param (ref $Object) (ref $CallSite) i32) (result anyref)))
- (type $16 (func (result anyref)))
+ (type $15 (func (param (ref $Object) (ref $Shape) (ref $CallSite) i32) (result anyref)))
+ (type $16 (func (param (ref $Object) (ref $CallSite) i32) (result anyref)))
+ (type $17 (func (result anyref)))
  (global $site_0 (mut (ref $CallSite)) (struct.new $CallSite
   (ref.null none)
   (i32.const -1)
@@ -126,14 +127,8 @@
   )
   (i32.const -1)
  )
- (func $get_field_slow (type $15) (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
+ (func $get_field_resolve (type $15) (param $obj (ref $Object)) (param $shape (ref $Shape)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
   (local $offset i32)
-  (local $shape (ref $Shape))
-  (local.set $shape
-   (struct.get $Object $shape
-    (local.get $obj)
-   )
-  )
   (local.set $offset
    (call $lookup_in_shape
     (local.get $shape)
@@ -166,12 +161,16 @@
   )
   (ref.null none)
  )
- (func $get_field_cached (type $15) (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
+ (func $get_field_cached (type $16) (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
+  (local $shape (ref $Shape))
+  (local.set $shape
+   (struct.get $Object $shape
+    (local.get $obj)
+   )
+  )
   (if
    (ref.eq
-    (struct.get $Object $shape
-     (local.get $obj)
-    )
+    (local.get $shape)
     (struct.get $CallSite $expected_shape
      (local.get $cache)
     )
@@ -189,13 +188,14 @@
     )
    )
   )
-  (call $get_field_slow
+  (call $get_field_resolve
    (local.get $obj)
+   (local.get $shape)
    (local.get $cache)
    (local.get $key)
   )
  )
- (func $main (type $16) (result anyref)
+ (func $main (type $17) (result anyref)
   (local $user_empty anyref)
   (local $user_one anyref)
   (local $temp_0 (ref null $Object))
