@@ -20,9 +20,15 @@ The current implementation of inline caches (e.g., `$add_cached`, `$get_field_ca
 (call $add_slow ...)
 ```
 
-## 2. Redundant Type Casts (`ref.as_non_null`)
+## 2. Redundant Type Casts (`ref.as_non_null`) [Implemented]
 
-**Observation:**
+**Status:** Implemented
+**Update:** The compiler now optimizes the initialization of object literals and closures by using `local.tee` to pass the newly created object (which is non-nullable) directly to the first `call $set_storage`, avoiding one `local.get`.
+However, `ref.as_non_null` is still required in some contexts (like arguments to functions expecting non-nullable references) because `local.tee` returns the type of the local (which is nullable `(ref null $Object)`), not the type of the operand, according to Wasm validation rules.
+We also completely removed `local.set` / `struct.new` sequence for empty object literals and closures with no captures, directly inlining the `call $new_object`.
+And for `CallExpression`, `MethodCall`, and `IndirectCall`, we successfully removed `ref.as_non_null` when passing the result of `local.tee` to `struct.get` (which accepts nullable references).
+
+**Observation (Original):**
 The compiler frequently generates `ref.as_non_null` casts for values that are structurally guaranteed to be non-nullable, particularly results from `struct.new` or `array.new`.
 
 **Example (`object_literal.wat`):**
@@ -36,8 +42,14 @@ The compiler frequently generates `ref.as_non_null` casts for values that are st
 )
 ```
 
-**Proposed Optimization:**
-If the type of the local or the return type of the function providing the value is already a non-nullable reference (e.g., `(ref $Object)`), the explicit `ref.as_non_null` instruction should be omitted. This reduces code size and validation overhead.
+**Optimized Pattern:**
+```wat
+(call $set_storage
+  (ref.as_non_null (local.tee $temp_0 (call $new_object ...)))
+  ...
+)
+```
+(Note: `ref.as_non_null` is preserved here for type safety with `call`, but `local.get` is saved. For `struct.get`, `ref.as_non_null` is removed.)
 
 ## 3. Redundant Instructions (`drop (ref.null none)`) [Implemented]
 
