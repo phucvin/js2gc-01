@@ -690,19 +690,18 @@
   (local $temp_7 (ref null $Closure))
   (local.set $user_obj
    (block (result (ref $Object))
-    (local.set $temp_0
-     (call $new_object
-      (call $extend_shape
-       (call $new_root_shape)
-       (i32.const 0)
-       (i32.const 0)
-      )
-      (i32.const 1)
-     )
-    )
     (call $set_storage
      (ref.as_non_null
-      (local.get $temp_0)
+      (local.tee $temp_0
+       (call $new_object
+        (call $extend_shape
+         (call $new_root_shape)
+         (i32.const 0)
+         (i32.const 0)
+        )
+        (i32.const 1)
+       )
+      )
      )
      (i32.const 0)
      (ref.i31
@@ -719,18 +718,11 @@
     (local.get $user_obj)
    )
    (i32.const 1)
-   (block (result (ref $Closure))
-    (local.set $temp_1
-     (call $new_object
-      (call $new_root_shape)
-      (i32.const 0)
-     )
-    )
-    (struct.new $Closure
-     (ref.func $closure_0)
-     (ref.as_non_null
-      (local.get $temp_1)
-     )
+   (struct.new $Closure
+    (ref.func $closure_0)
+    (call $new_object
+     (call $new_root_shape)
+     (i32.const 0)
     )
    )
   )
@@ -739,21 +731,18 @@
     (local.set $temp_2
      (local.get $user_obj)
     )
-    (local.set $temp_3
-     (ref.cast (ref $Closure)
-      (call $get_field_cached
-       (ref.cast (ref $Object)
-        (local.get $temp_2)
-       )
-       (global.get $site_1)
-       (i32.const 1)
-      )
-     )
-    )
     (call_ref $ClosureSig1
      (struct.get $Closure $env
-      (ref.as_non_null
-       (local.get $temp_3)
+      (local.tee $temp_3
+       (ref.cast (ref $Closure)
+        (call $get_field_cached
+         (ref.cast (ref $Object)
+          (local.get $temp_2)
+         )
+         (global.get $site_1)
+         (i32.const 1)
+        )
+       )
       )
      )
      (local.get $temp_2)
@@ -772,19 +761,18 @@
   )
   (local.set $user_obj2
    (block (result (ref $Object))
-    (local.set $temp_4
-     (call $new_object
-      (call $extend_shape
-       (call $new_root_shape)
-       (i32.const 2)
-       (i32.const 0)
-      )
-      (i32.const 1)
-     )
-    )
     (call $set_storage
      (ref.as_non_null
-      (local.get $temp_4)
+      (local.tee $temp_4
+       (call $new_object
+        (call $extend_shape
+         (call $new_root_shape)
+         (i32.const 2)
+         (i32.const 0)
+        )
+        (i32.const 1)
+       )
+      )
      )
      (i32.const 0)
      (ref.i31
@@ -801,18 +789,11 @@
     (local.get $user_obj2)
    )
    (i32.const 3)
-   (block (result (ref $Closure))
-    (local.set $temp_5
-     (call $new_object
-      (call $new_root_shape)
-      (i32.const 0)
-     )
-    )
-    (struct.new $Closure
-     (ref.func $closure_1)
-     (ref.as_non_null
-      (local.get $temp_5)
-     )
+   (struct.new $Closure
+    (ref.func $closure_1)
+    (call $new_object
+     (call $new_root_shape)
+     (i32.const 0)
     )
    )
   )
@@ -822,21 +803,18 @@
      (local.set $temp_6
       (local.get $user_obj2)
      )
-     (local.set $temp_7
-      (ref.cast (ref $Closure)
-       (call $get_field_cached
-        (ref.cast (ref $Object)
-         (local.get $temp_6)
-        )
-        (global.get $site_2)
-        (i32.const 3)
-       )
-      )
-     )
      (call_ref $ClosureSig0
       (struct.get $Closure $env
-       (ref.as_non_null
-        (local.get $temp_7)
+       (local.tee $temp_7
+        (ref.cast (ref $Closure)
+         (call $get_field_cached
+          (ref.cast (ref $Object)
+           (local.get $temp_6)
+          )
+          (global.get $site_2)
+          (i32.const 3)
+         )
+        )
        )
       )
       (local.get $temp_6)

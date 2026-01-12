@@ -588,19 +588,18 @@
  )
  (func $makeAdder (type $23) (param $user_x anyref) (result anyref)
   (local $temp_0 (ref null $Object))
-  (local.set $temp_0
-   (call $new_object
-    (call $extend_shape
-     (call $new_root_shape)
-     (i32.const 0)
-     (i32.const 0)
-    )
-    (i32.const 1)
-   )
-  )
   (call $set_storage
    (ref.as_non_null
-    (local.get $temp_0)
+    (local.tee $temp_0
+     (call $new_object
+      (call $extend_shape
+       (call $new_root_shape)
+       (i32.const 0)
+       (i32.const 0)
+      )
+      (i32.const 1)
+     )
+    )
    )
    (i32.const 0)
    (local.get $user_x)
@@ -625,15 +624,12 @@
   (block (result anyref)
    (call $console_log
     (block (result anyref)
-     (local.set $temp_0
-      (ref.cast (ref $Closure)
-       (local.get $user_add5)
-      )
-     )
      (call_ref $ClosureSig1
       (struct.get $Closure $env
-       (ref.as_non_null
-        (local.get $temp_0)
+       (local.tee $temp_0
+        (ref.cast (ref $Closure)
+         (local.get $user_add5)
+        )
        )
       )
       (ref.null none)

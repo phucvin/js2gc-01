@@ -35,6 +35,7 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
     }
 
     const capturedVars = closureCtx.getCapturedVars();
+    const totalCaptured = capturedVars.length;
 
     let envCreationCode = `(call $new_root_shape)`;
     let offset = 0;
@@ -44,8 +45,10 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
         offset++;
     }
 
+    const funcName = `closure_${closureCounter++}`;
+
     const envLocal = ctx.getTempLocal('(ref null $Object)');
-    let envSetupCode = `(local.set ${envLocal} (call $new_object ${envCreationCode} (i32.const ${offset})))\n`;
+    let envSetupCode = '';
 
     offset = 0;
     for (const varName of capturedVars) {
@@ -68,11 +71,33 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
              throw new Error(`Captured variable ${varName} not found in scope`);
         }
 
-        envSetupCode += `(call $set_storage (ref.as_non_null (local.get ${envLocal})) (i32.const ${offset}) ${valCode})\n`;
+        let envAccess;
+        if (offset === 0) {
+             // We must use ref.as_non_null because local.tee returns the type of the local (nullable).
+             envAccess = `(ref.as_non_null (local.tee ${envLocal} (call $new_object ${envCreationCode} (i32.const ${totalCaptured}))))`;
+        } else {
+             envAccess = `(ref.as_non_null (local.get ${envLocal}))`;
+        }
+
+        // IMPORTANT: The order of evaluation of arguments to `call $set_storage`:
+        // 1. envAccess (which does `new_object` via `tee` if first)
+        // 2. index (i32.const)
+        // 3. valCode (value expression)
+        //
+        // Original code:
+        // (local.set env (new_object))
+        // (set_storage (get env) idx (valCode))
+        // Order: `new_object`, then `valCode` (as part of set_storage args).
+        //
+        // New code:
+        // (set_storage (tee env (new_object)) idx (valCode))
+        // Order: `new_object`, then `valCode`.
+        //
+        // So the order is preserved.
+
+        envSetupCode += `(call $set_storage ${envAccess} (i32.const ${offset}) ${valCode})\n`;
         offset++;
     }
-
-    const funcName = `closure_${closureCounter++}`;
 
     // Add $this parameter
     let paramsDecl = '(param $env anyref) (param $this anyref)';
@@ -100,6 +125,10 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
 
     registerGeneratedFunction(funcWat);
     registerGeneratedFunction(`(elem declare func $${funcName})`);
+
+    if (totalCaptured === 0) {
+        return `(struct.new $Closure (ref.func $${funcName}) (call $new_object ${envCreationCode} (i32.const 0)))`;
+    }
 
     return `(block (result (ref $Closure))
         ${envSetupCode}
@@ -186,6 +215,12 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
           }
       }
 
+      const totalProps = offset;
+      if (totalProps === 0) {
+          const code = `(call $new_object ${shapeCode} (i32.const 0))`;
+          return dropResult ? `(drop ${code})` : code;
+      }
+
       const objLocal = ctx.getTempLocal('(ref null $Object)');
 
       let setPropsCode = '';
@@ -193,13 +228,22 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
       for (const prop of expr.properties) {
           if (ts.isPropertyAssignment(prop) && prop.name && ts.isIdentifier(prop.name)) {
               const valCode = compileExpression(prop.initializer, ctx);
-              setPropsCode += `(call $set_storage (ref.as_non_null (local.get ${objLocal})) (i32.const ${offset}) ${valCode})\n`;
+
+              let objAccess;
+              if (offset === 0) {
+                   // We must use ref.as_non_null because local.tee returns the type of the local (nullable),
+                   // but set_storage expects a non-nullable reference.
+                   objAccess = `(ref.as_non_null (local.tee ${objLocal} (call $new_object ${shapeCode} (i32.const ${totalProps}))))`;
+              } else {
+                   objAccess = `(ref.as_non_null (local.get ${objLocal}))`;
+              }
+
+              setPropsCode += `(call $set_storage ${objAccess} (i32.const ${offset}) ${valCode})\n`;
               offset++;
           }
       }
 
       const code = `(block (result (ref $Object))
-         (local.set ${objLocal} (call $new_object ${shapeCode} (i32.const ${offset})))
          ${setPropsCode}
          (ref.as_non_null (local.get ${objLocal}))
       )`;
@@ -224,9 +268,8 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
                });
 
                const code = `(block (result anyref)
-                   (local.set ${closureLocal} (ref.cast (ref $Closure) ${closureExpr}))
                    (call_ref ${sigName}
-                       (struct.get $Closure $env (ref.as_non_null (local.get ${closureLocal})))
+                       (struct.get $Closure $env (local.tee ${closureLocal} (ref.cast (ref $Closure) ${closureExpr})))
                        (ref.null any) ;; $this for simple function call
                        ${argsCode}
                        (ref.cast (ref ${sigName}) (struct.get $Closure $func (ref.as_non_null (local.get ${closureLocal}))))
@@ -265,9 +308,8 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
 
           const code = `(block (result anyref)
               (local.set ${objLocal} ${objCode})
-              (local.set ${closureLocal} (ref.cast (ref $Closure) ${getFieldCode}))
               (call_ref ${sigName}
-                  (struct.get $Closure $env (ref.as_non_null (local.get ${closureLocal})))
+                  (struct.get $Closure $env (local.tee ${closureLocal} (ref.cast (ref $Closure) ${getFieldCode})))
                   (local.get ${objLocal}) ;; pass obj as $this
                   ${argsCode}
                   (ref.cast (ref ${sigName}) (struct.get $Closure $func (ref.as_non_null (local.get ${closureLocal}))))
@@ -287,9 +329,8 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
           });
 
           const code = `(block (result anyref)
-              (local.set ${closureLocal} (ref.cast (ref $Closure) ${closureExpr}))
               (call_ref ${sigName}
-                   (struct.get $Closure $env (ref.as_non_null (local.get ${closureLocal})))
+                   (struct.get $Closure $env (local.tee ${closureLocal} (ref.cast (ref $Closure) ${closureExpr})))
                    (ref.null any) ;; $this for indirect call
                    ${argsCode}
                    (ref.cast (ref ${sigName}) (struct.get $Closure $func (ref.as_non_null (local.get ${closureLocal}))))

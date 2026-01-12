@@ -211,19 +211,18 @@
   (local $temp_0 (ref null $Object))
   (local.set $user_obj
    (block (result (ref $Object))
-    (local.set $temp_0
-     (call $new_object
-      (call $extend_shape
-       (call $new_root_shape)
-       (i32.const 0)
-       (i32.const 0)
-      )
-      (i32.const 1)
-     )
-    )
     (call $set_storage
      (ref.as_non_null
-      (local.get $temp_0)
+      (local.tee $temp_0
+       (call $new_object
+        (call $extend_shape
+         (call $new_root_shape)
+         (i32.const 0)
+         (i32.const 0)
+        )
+        (i32.const 1)
+       )
+      )
      )
      (i32.const 0)
      (ref.i31
