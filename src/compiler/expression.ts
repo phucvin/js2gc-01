@@ -14,6 +14,11 @@ export { resetClosureCounter };
 function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunction, ctx: CompilationContext): string {
     const closureCtx = new CompilationContext(ctx);
 
+    // Register $this if it is a FunctionExpression (not arrow function)
+    if (ts.isFunctionExpression(node)) {
+        closureCtx.addLocal('$this', 'anyref');
+    }
+
     // Scan parameters to add to locals
     node.parameters.forEach(param => {
         if (ts.isIdentifier(param.name)) {
@@ -78,7 +83,8 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
 
     const funcName = `closure_${closureCounter++}`;
 
-    let paramsDecl = '(param $env anyref)';
+    // Add $this parameter
+    let paramsDecl = '(param $env anyref) (param $this anyref)';
     node.parameters.forEach(param => {
          if (ts.isIdentifier(param.name)) {
              paramsDecl += ` (param $user_${param.name.text} anyref)`;
@@ -88,7 +94,9 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
     let localsDecl = '';
     closureCtx.getLocals().forEach((type, name) => {
         const isParam = node.parameters.some(p => ts.isIdentifier(p.name) && `$user_${p.name.text}` === name);
-        if (!isParam) {
+        // Exclude $this from locals (it is a param)
+        const isThis = name === '$this';
+        if (!isParam && !isThis) {
             localsDecl += `(local ${name} ${type})\n`;
         }
     });
@@ -180,6 +188,7 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
                    (local.set ${closureLocal} (ref.cast (ref $Closure) ${closureExpr}))
                    (call_ref ${sigName}
                        (struct.get $Closure $env (ref.as_non_null (local.get ${closureLocal})))
+                       (ref.null any) ;; $this for simple function call
                        ${argsCode}
                        (ref.cast (ref ${sigName}) (struct.get $Closure $func (ref.as_non_null (local.get ${closureLocal}))))
                    )
@@ -197,6 +206,47 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
           } else {
               return `(ref.null any)`;
           }
+      } else if (ts.isPropertyAccessExpression(expr.expression) && ts.isIdentifier(expr.expression.name)) {
+          // Method call obj.method(...)
+          const objExpr = expr.expression.expression;
+          const propName = expr.expression.name.text;
+          const keyId = getPropertyId(propName);
+
+          const objCode = compileExpression(objExpr, ctx);
+          const args = expr.arguments.map(arg => compileExpression(arg, ctx));
+
+          const objLocal = ctx.getTempLocal('anyref');
+          const closureLocal = ctx.getTempLocal('(ref null $Closure)');
+          const sigName = `$ClosureSig${args.length}`;
+
+          let argsCode = '';
+          args.forEach(argCode => {
+               argsCode += argCode + ' ';
+          });
+
+          // Logic:
+          // 1. Evaluate obj -> objLocal
+          // 2. Get field propName from objLocal -> closureLocal (cast to closure)
+          // 3. Call closure with objLocal as $this
+
+          let getFieldCode = '';
+          if (enableIC) {
+              const cacheGlobal = registerGlobalCallSite();
+              getFieldCode = `(call $get_field_cached (ref.cast (ref $Object) (local.get ${objLocal})) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
+          } else {
+              getFieldCode = `(call $get_field_slow (ref.cast (ref $Object) (local.get ${objLocal})) (i32.const ${keyId}))`;
+          }
+
+          return `(block (result anyref)
+              (local.set ${objLocal} ${objCode})
+              (local.set ${closureLocal} (ref.cast (ref $Closure) ${getFieldCode}))
+              (call_ref ${sigName}
+                  (struct.get $Closure $env (ref.as_non_null (local.get ${closureLocal})))
+                  (local.get ${objLocal}) ;; pass obj as $this
+                  ${argsCode}
+                  (ref.cast (ref ${sigName}) (struct.get $Closure $func (ref.as_non_null (local.get ${closureLocal}))))
+              )
+          )`;
       } else {
           // Indirect call
           const closureExpr = compileExpression(expr.expression, ctx);
@@ -213,6 +263,7 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
               (local.set ${closureLocal} (ref.cast (ref $Closure) ${closureExpr}))
               (call_ref ${sigName}
                    (struct.get $Closure $env (ref.as_non_null (local.get ${closureLocal})))
+                   (ref.null any) ;; $this for indirect call
                    ${argsCode}
                    (ref.cast (ref ${sigName}) (struct.get $Closure $func (ref.as_non_null (local.get ${closureLocal}))))
                )
@@ -359,6 +410,27 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
       throw new Error(`Unknown identifier: ${varName}`);
   } else if (ts.isArrowFunction(expr) || ts.isFunctionExpression(expr)) {
       return compileFunctionExpression(expr, ctx);
+  } else if (expr.kind === ts.SyntaxKind.ThisKeyword) {
+      try {
+          const res = ctx.lookup('$this');
+          if (res.type === 'local') {
+              return `(local.get $this)`;
+          } else if (res.type === 'captured') {
+               // Captured $this (e.g. inside ArrowFunction)
+               // Access it from env
+               const keyId = getPropertyId('$this');
+               if (enableIC) {
+                   const cacheGlobal = registerGlobalCallSite();
+                   return `(call $get_field_cached (ref.cast (ref $Object) (local.get $env)) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
+               } else {
+                   return `(call $get_field_slow (ref.cast (ref $Object) (local.get $env)) (i32.const ${keyId}))`;
+               }
+          }
+      } catch (e) {
+          // If not found (e.g. top level or not available), return null (or global object if we had one)
+          return `(ref.null any)`;
+      }
+      return `(ref.null any)`;
   }
 
   throw new Error(`Unsupported expression kind: ${ts.SyntaxKind[expr.kind]}`);
