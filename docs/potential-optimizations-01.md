@@ -1,98 +1,84 @@
 # Potential Optimizations
 
-This document outlines potential optimizations identified by analyzing the generated WebAssembly (WAT) files in the `testdata/` directory.
+This document consolidates optimization opportunities identified by analyzing generated WebAssembly (WAT) files.
 
-## Runtime Optimizations
+## 1. String Optimizations
 
-### 1. String Pooling and Constants
-Currently, the `console.log` implementation (and likely other parts of the runtime) constructs new string objects every time it needs to print a constant string.
-
-**Example from `add.wat` (and others):**
-```wat
-(call $print_string_helper
-  (array.new_fixed $String 4
-    (i32.const 110) (i32.const 117) (i32.const 108) (i32.const 108) ;; "null"
-  )
-)
-```
-
+### String Pooling and Constants
+**Observation:** The runtime currently constructs new string objects (arrays) every time it needs to print or use a constant string (e.g., "null", "true", "false", "[object Object]").
 **Optimization:**
--   Allocate constant strings (like "null", "[object Object]") once in a global or static array.
+-   Allocate constant strings once (e.g., in a global, static array, or lazy-initialized global).
 -   Reuse these references instead of allocating new arrays on every call.
 
-### 2. Shared Runtime Module
-Each generated WAT file includes a full copy of the runtime helper functions (`$console_log`, `$get_type_id`, `$add_slow`, `$new_root_shape`, etc.), even if they are identical across files.
-
+### Efficient String Construction
+**Observation:** Strings are constructed character-by-character using `array.new_fixed` with immediate `i32.const` values, which bloats binary size for long strings.
 **Optimization:**
--   Extract these helpers into a shared runtime module (e.g., `runtime.wasm`).
--   Import these functions in the generated code instead of embedding them.
--   This would significantly reduce the size of the generated binaries if they were to be distributed or loaded together.
+-   Use `array.new_data` (if supported by the Wasm GC target) or `memory.init` to initialize arrays from a passive data segment.
 
-### 3. Efficient String Construction
-Strings are currently constructed character-by-character using `array.new_fixed` with immediate `i32.const` values.
+## 2. Runtime & Code Size
 
-**Current:**
-```wat
-(array.new_fixed $String 15 (i32.const 91) ... (i32.const 93))
-```
-
+### Shared Runtime Module
+**Observation:** Each generated WAT file includes a full copy of runtime helper functions (`$console_log`, `$get_type_id`, `$add_slow`, etc.) and type definitions.
 **Optimization:**
--   For longer strings, use `memory.init` (if copying from a data segment to linear memory) or `array.new_data` (if targeting a Wasm GC version that supports it) to initialize arrays from a passive data segment. This is more compact and faster for initialization.
+-   **Shared Library:** Extract helpers into a shared runtime module (e.g., `runtime.wasm`) and import them.
+-   **Dead Code Elimination:** Only emit types and helpers that are actually referenced by the user's code.
 
-## Compiler / Code Generation Optimizations
-
-### 1. Object Literal Construction
-Object literals are constructed at runtime by building the shape chain step-by-step.
-
-**Current (`object_literal.wat`):**
-```wat
-(call $new_object
-  (call $extend_shape
-    (call $extend_shape (call $new_root_shape) ...)
-    ...
-  )
-  ...
-)
-```
-
+### Dispatch Logic (e.g., `console.log`)
+**Observation:** `console.log` uses a linear cascade of `if/else` blocks with `ref.test`.
 **Optimization:**
--   **Pre-computed Shapes:** For static object literals, the compiler can pre-compute the final shape layout.
--   **Shape Caching:** Store the resulting shape in a global variable if the object literal is in a frequently executed path (like a loop or a function called multiple times), avoiding the reconstruction of the linked list on every execution.
+-   **Type IDs/Dispatch Table:** Use `br_table` on a type ID or a "printable" interface/method on the base object to dispatch faster.
 
-### 2. Redundant Type Casts (`ref.as_non_null`)
-The generated code frequently casts a nullable reference to a non-nullable one immediately after assignment or generation, even when control flow guarantees non-nullability.
+## 3. Type System & Instruction Selection
 
-**Current:**
-```wat
-(local.set $temp_0 (call $new_object ...)) ;; Returns (ref $Object)
-(call $set_storage (ref.as_non_null (local.get $temp_0)) ...)
-```
-
+### Optimize Type Checks with `br_on_cast`
+**Observation:** Polymorphic code often uses `ref.test` followed by `ref.cast`.
 **Optimization:**
--   Trust the type system: `$new_object` returns `(ref $Object)`, which is non-nullable. The local `$temp_0` might be typed as `(ref null $Object)`, necessitating the cast.
--   **Use Stack:** Instead of storing to a local and reading it back, keep the value on the stack.
-    ```wat
-    (call $set_storage (call $new_object ...) ...)
-    ```
-    If the value is needed multiple times, `local.tee` can be used, potentially with a more specific local type if possible.
+-   Use `br_on_cast` (or `br_on_cast_fail`) to combine the check and the cast, reducing code size and execution overhead.
 
-### 3. Temporary Locals
-The compiler generates many temporary locals (`$temp_0`, `$temp_1`, etc.) to hold intermediate results of expressions.
-
+### Redundant Type Casts (`ref.as_non_null`)
+**Observation:** The compiler frequently generates `ref.as_non_null` casts for values that are structurally guaranteed to be non-nullable (e.g., results of `struct.new`).
 **Optimization:**
--   Utilize the WebAssembly stack machine more effectively. Chained calls (like `obj.method().field`) can often be emitted as a sequence of instructions without intermediate `local.set`/`local.get`.
+-   Omit the cast if the source is already typed as non-nullable.
+-   Use `(ref $T)` typed locals or stack-based flow to preserve type information.
 
-### 4. Dispatch Logic in `console.log`
-The `$console_log` function uses a cascade of `if/else` blocks with `ref.test` to determine the type of the value.
-
+### Non-Nullable Fields in Structures
+**Observation:** Structs like `$Closure` use nullable fields (e.g., `funcref`) where a value is always expected.
 **Optimization:**
--   **Type IDs:** Since objects and boxed primitives seem to have distinct internal representations or tags, a dispatch table (using `br_table` on a type ID) could be faster than a linear sequence of checks, especially as the number of types grows.
--   **Polymorphism:** If the object model allows, implementing a "printable" interface or method on the base object structure could allow `call_ref` to dispatch to the correct print function directly.
+-   Use non-nullable types (e.g., `(ref func)`) in struct definitions to avoid runtime null checks.
 
-## Specific Observations
+### Short-Circuiting Logic
+**Observation:** Inline caches and other logic previously used eager `i32.and`.
+**Status:** [Implemented for `$add_cached` and `$sub_cached`] - The compiler now uses `br_if` logic within a `block` to short-circuit.
+**Further Optimization:** Apply similar short-circuiting to shape checks in Inline Caches (reuse the loaded shape for the slow path to avoid redundant memory access).
 
--   **Inline Caching (`loop_field_access.wat`):** The inline cache implementation correctly uses `i32.and` for eager evaluation of shape checks, which is efficient.
--   **Closures (`closure.wat`):** Closure creation allocates both a struct and an object (for the environment). If the environment doesn't escape or is simple, it might be possible to flatten it or use `struct.new` directly without a wrapper object.
+## 4. Stack & Local Variable Management
 
-## Conclusion
-The current implementation is functional and demonstrates good use of Wasm GC features (structs, arrays). The primary areas for optimization are code size reduction (via shared runtime and stack usage) and runtime performance (via string pooling and optimized object construction).
+### Reduce Temporary Locals
+**Observation:** The compiler generates many temporary locals (`$temp_0`, etc.) for intermediate results.
+**Optimization:**
+-   Utilize the WebAssembly stack more effectively (chaining instructions).
+-   Use `local.tee` or `let` blocks to handle intermediate values without assigning to scope-level nullable locals.
+
+### Redundant `drop`
+**Observation:** `(drop (ref.null none))` was common for void statements.
+**Status:** [Partially Implemented] - `dropResult` flag now handles most cases, but some fallback cases may remain.
+
+## 5. Object & Shape Optimizations
+
+### Object Literal Construction
+**Observation:** Object literals are built at runtime by incrementally extending shapes.
+**Optimization:**
+-   **Pre-computed Shapes:** Compute the final shape layout at compile time for static literals.
+-   **Shape Caching:** Store the resulting shapes in globals for frequently executed literals.
+
+### Inline Trivial Accessors
+**Observation:** Deep property access involves multiple function calls.
+**Optimization:**
+-   Inline trivial property accessors (like `$get_field_cached` hits) to allow JIT optimizations (like hoisting checks).
+
+## 6. Arithmetic Optimizations
+
+### Specialized Int32 Arithmetic
+**Observation:** Arithmetic is often boxed into `i31ref` or `BoxedI32` immediately.
+**Optimization:**
+-   Keep values as raw `i32` on the stack or in locals as long as possible, only boxing when necessary.
