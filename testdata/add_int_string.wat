@@ -26,6 +26,7 @@
   (i32.const 0)
   (ref.null nofunc)
  ))
+ (data $str_data_0 "hello")
  (elem declare func $add_f64_f64 $add_f64_i32 $add_i32_f64 $add_i32_i32 $add_unsupported)
  (export "main" (func $main))
  (func $print_string_helper (type $12) (param $str (ref $String))
@@ -432,12 +433,9 @@
     (ref.i31
      (i32.const 10)
     )
-    (array.new_fixed $String 5
-     (i32.const 104)
-     (i32.const 101)
-     (i32.const 108)
-     (i32.const 108)
-     (i32.const 111)
+    (array.new_data $String $str_data_0
+     (i32.const 0)
+     (i32.const 5)
     )
     (global.get $site_bin_0)
    )

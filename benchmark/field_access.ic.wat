@@ -638,9 +638,9 @@
   )
  )
  (func $add_cached (type $22) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
-  (if (result anyref)
-   (i32.and
-    (i32.eq
+  (block $slow
+   (br_if $slow
+    (i32.ne
      (call $get_type_id
       (local.get $lhs)
      )
@@ -648,7 +648,9 @@
       (local.get $cache)
      )
     )
-    (i32.eq
+   )
+   (br_if $slow
+    (i32.ne
      (call $get_type_id
       (local.get $rhs)
      )
@@ -657,7 +659,7 @@
      )
     )
    )
-   (then
+   (return
     (call_ref $BinaryOpFunc
      (local.get $lhs)
      (local.get $rhs)
@@ -668,13 +670,11 @@
      )
     )
    )
-   (else
-    (call $add_slow
-     (local.get $lhs)
-     (local.get $rhs)
-     (local.get $cache)
-    )
-   )
+  )
+  (call $add_slow
+   (local.get $lhs)
+   (local.get $rhs)
+   (local.get $cache)
   )
  )
  (func $less_than (type $ClosureSig0) (param $lhs anyref) (param $rhs anyref) (result anyref)
@@ -724,19 +724,18 @@
   (local $temp_1 anyref)
   (local.set $user_o
    (block (result (ref $Object))
-    (local.set $temp_0
-     (call $new_object
-      (call $extend_shape
-       (call $new_root_shape)
-       (i32.const 0)
-       (i32.const 0)
-      )
-      (i32.const 1)
-     )
-    )
     (call $set_storage
      (ref.as_non_null
-      (local.get $temp_0)
+      (local.tee $temp_0
+       (call $new_object
+        (call $extend_shape
+         (call $new_root_shape)
+         (i32.const 0)
+         (i32.const 0)
+        )
+        (i32.const 1)
+       )
+      )
      )
      (i32.const 0)
      (ref.i31

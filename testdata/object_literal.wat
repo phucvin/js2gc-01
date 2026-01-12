@@ -23,6 +23,7 @@
  (import "env" "print_i32" (func $print_i32 (type $10) (param i32)))
  (import "env" "print_f64" (func $print_f64 (type $11) (param f64)))
  (import "env" "print_char" (func $print_char (type $10) (param i32)))
+ (data $str_data_0 "hello")
  (export "main" (func $main))
  (func $new_root_shape (type $12) (result (ref $Shape))
   (struct.new $Shape
@@ -268,12 +269,9 @@
        )
       )
       (i32.const 0)
-      (array.new_fixed $String 5
-       (i32.const 104)
-       (i32.const 101)
-       (i32.const 108)
-       (i32.const 108)
-       (i32.const 111)
+      (array.new_data $String $str_data_0
+       (i32.const 0)
+       (i32.const 5)
       )
      )
      (call $set_storage

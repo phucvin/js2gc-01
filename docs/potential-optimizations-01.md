@@ -16,6 +16,10 @@ The runtime (e.g., `console.log`) constructs new string objects every time it ne
 **Observation:**
 Strings are currently constructed character-by-character using `array.new_fixed` with immediate `i32.const` values, which bloats the binary size for longer strings.
 
+
+**Status:**
+Implemented.
+
 **Optimization:**
 -   **Data Segments:** Use `array.new_data` (if supported) or `memory.init` to initialize arrays from a passive data segment. This is more compact for longer strings.
 
