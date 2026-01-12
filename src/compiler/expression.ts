@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import { getPropertyId, CompilationContext, registerGlobalCallSite, registerGeneratedFunction, registerBinaryOpCallSite, registerStringLiteral } from './context.ts';
+import { getPropertyId, CompilationContext, registerGlobalCallSite, registerGeneratedFunction, registerBinaryOpCallSite, registerStringLiteral, registerShape } from './context.ts';
 import { compileBody } from './statement.ts';
 
 let closureCounter = 0;
@@ -37,20 +37,15 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
     const capturedVars = closureCtx.getCapturedVars();
     const totalCaptured = capturedVars.length;
 
-    let envCreationCode = `(call $new_root_shape)`;
-    let offset = 0;
-    for (const varName of capturedVars) {
-        const keyId = getPropertyId(varName);
-        envCreationCode = `(call $extend_shape ${envCreationCode} (i32.const ${keyId}) (i32.const ${offset}))`;
-        offset++;
-    }
+    const envShapeGlobal = registerShape(capturedVars);
+    const envCreationCode = `(global.get ${envShapeGlobal})`;
 
     const funcName = `closure_${closureCounter++}`;
 
     const envLocal = ctx.getTempLocal('(ref null $Object)');
     let envSetupCode = '';
 
-    offset = 0;
+    let offset = 0;
     for (const varName of capturedVars) {
         const lookup = ctx.lookup(varName);
         let valCode = '';
@@ -78,22 +73,6 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
         } else {
              envAccess = `(ref.as_non_null (local.get ${envLocal}))`;
         }
-
-        // IMPORTANT: The order of evaluation of arguments to `call $set_storage`:
-        // 1. envAccess (which does `new_object` via `tee` if first)
-        // 2. index (i32.const)
-        // 3. valCode (value expression)
-        //
-        // Original code:
-        // (local.set env (new_object))
-        // (set_storage (get env) idx (valCode))
-        // Order: `new_object`, then `valCode` (as part of set_storage args).
-        //
-        // New code:
-        // (set_storage (tee env (new_object)) idx (valCode))
-        // Order: `new_object`, then `valCode`.
-        //
-        // So the order is preserved.
 
         envSetupCode += `(call $set_storage ${envAccess} (i32.const ${offset}) ${valCode})\n`;
         offset++;
@@ -156,14 +135,6 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext, 
     }
 
     const code = compileExpressionValue(expr, ctx, dropResult);
-
-    // Check if the expression handler already respected dropResult
-    // We can't easily know if compileExpressionValue returned a dropped value or not,
-    // unless we pass dropResult to it.
-    // I will modify compileExpressionValue to accept dropResult.
-    // But currently compileExpression calls compileExpressionValue then does drop.
-    // If compileExpressionValue handles dropResult, we shouldn't drop again.
-
     return code;
 }
 
@@ -209,64 +180,32 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
   } else if (expr.kind === ts.SyntaxKind.FalseKeyword) {
       return fallbackPure(`(ref.i31 (i32.const 0))`);
   } else if (ts.isObjectLiteralExpression(expr)) {
-      let shapeCode = `(call $new_root_shape)`;
-      let offset = 0;
-
-      let protoCode = `(global.get $g_obj_proto)`;
+      const propNames: string[] = [];
       let protoProp: ts.PropertyAssignment | null = null;
+      let protoCode = `(global.get $g_obj_proto)`;
 
       for (const prop of expr.properties) {
           // Check for __proto__
           if (ts.isPropertyAssignment(prop) && ((ts.isIdentifier(prop.name) && prop.name.text === '__proto__') || (ts.isStringLiteral(prop.name) && prop.name.text === '__proto__'))) {
-               // If there are multiple __proto__, the last one wins in strict mode usually, but here we just take the first one or last one.
-               // Actually JS treats __proto__: ... specially.
-               // We will extract it and NOT add it to the shape.
                protoProp = prop;
                continue;
           }
 
           if (ts.isPropertyAssignment(prop) && prop.name && ts.isIdentifier(prop.name)) {
-              const keyId = getPropertyId(prop.name.text);
-              shapeCode = `(call $extend_shape ${shapeCode} (i32.const ${keyId}) (i32.const ${offset}))`;
-              offset++;
+              propNames.push(prop.name.text);
           }
       }
 
       if (protoProp) {
-           const valCode = compileExpression(protoProp.initializer, ctx);
-           // We need to cast it to (ref null $Object). If it's not an object or null, we should handle it.
-           // JS behavior: if not object or null, ignore.
-           // For now, let's assume valid object or null, or just cast and hope?
-           // Safer: check type.
-           // But for simplicity, let's just cast for now and assume user passes object.
-           // Wait, I can do a runtime check: (br_on_cast ... (ref $Object) ... )
-
-           const tempProto = ctx.getTempLocal('anyref');
-
-           // If valCode evaluates to an object, use it. If null, use ref.null $Object. If else, use $g_obj_proto.
-           // However, standard JS says: if not object/null, ignore (so keep Object.prototype).
-           // But if it IS null, set to null.
-
-           // Let's implement a small inline helper block
-           // (block (result (ref null $Object))
-           //    (local.tee $temp val)
-           //    (br_on_cast $ok (ref $Object) (local.get $temp))
-           //    (if (ref.is_null (local.get $temp)) (then (return (ref.null $Object))))
-           //    (return (global.get $g_obj_proto))
-           //    (label $ok (ref.cast (ref $Object) (local.get $temp)))
-           // )
-           // This is complex to inject inline.
-
-           // Simpler approach: Just cast to (ref null $Object) assuming it IS one.
-           // If the user passes 123, it will trap.
-           // Given this is a prototype/scratch project, maybe acceptable.
-           // But I'll try to be slightly robust:
-           // If we just use (ref.cast (ref null $Object) ...), it traps on non-null non-object.
-
-           protoCode = `(ref.cast (ref null $Object) ${valCode})`;
+          const valCode = compileExpression(protoProp.initializer, ctx);
+          // Simplified: trap if not null or object (no complex checks)
+          protoCode = `(ref.cast (ref null $Object) ${valCode})`;
       }
 
-      const totalProps = offset;
+      const shapeGlobal = registerShape(propNames);
+      const shapeCode = `(global.get ${shapeGlobal})`;
+
+      const totalProps = propNames.length;
       if (totalProps === 0) {
           const code = `(call $new_object ${shapeCode} (i32.const 0) ${protoCode})`;
           return dropResult ? `(drop ${code})` : code;
@@ -275,7 +214,7 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
       const objLocal = ctx.getTempLocal('(ref null $Object)');
 
       let setPropsCode = '';
-      offset = 0;
+      let offset = 0;
       for (const prop of expr.properties) {
           if (prop === protoProp) continue;
 
@@ -286,10 +225,6 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
               if (offset === 0) {
                    // We must use ref.as_non_null because local.tee returns the type of the local (nullable),
                    // but set_storage expects a non-nullable reference.
-                   // Ensure we pass protoCode to the FIRST new_object call.
-                   // Note: protoCode might contain side effects (if it's an expression), so it should only be evaluated once.
-                   // If we put it in the call, it evaluates before call.
-
                    objAccess = `(ref.as_non_null (local.tee ${objLocal} (call $new_object ${shapeCode} (i32.const ${totalProps}) ${protoCode})))`;
               } else {
                    objAccess = `(ref.as_non_null (local.get ${objLocal}))`;

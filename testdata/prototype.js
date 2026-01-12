@@ -28,11 +28,9 @@ function main() {
   console.log(obj2.z); // Should be 30
 
   // Test default prototype (Object.prototype mechanism validation)
-  // We can't access Object.prototype directly yet, but objects should have it.
-  // We can verify that we can create objects without __proto__ and they work.
   let plain = { a: 1 };
   console.log(plain.a);
 
   // Test missing property
-  console.log(plain.missing); // Should be null (or undefined/null in our system)
+  console.log(plain.missing); // Should be null
 }

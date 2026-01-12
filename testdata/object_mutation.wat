@@ -39,6 +39,15 @@
   (ref.null none)
   (i32.const -1)
  ))
+ (global $shape_literal_0 (ref $Shape) (struct.new $Shape
+  (struct.new $Shape
+   (ref.null none)
+   (i32.const -1)
+   (i32.const -1)
+  )
+  (i32.const 0)
+  (i32.const 0)
+ ))
  (global $g_str_null (mut (ref null $String)) (ref.null none))
  (global $g_str_obj (mut (ref null $String)) (ref.null none))
  (global $g_obj_proto (mut (ref null $Object)) (ref.null none))
@@ -474,11 +483,7 @@
      (ref.as_non_null
       (local.tee $temp_0
        (call $new_object
-        (call $extend_shape
-         (call $new_root_shape)
-         (i32.const 0)
-         (i32.const 0)
-        )
+        (global.get $shape_literal_0)
         (i32.const 1)
         (global.get $g_obj_proto)
        )
