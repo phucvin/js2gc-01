@@ -10,7 +10,10 @@ const binaryenPromise = import('binaryen');
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-const projectRoot = path.resolve(__dirname, '..');
+let projectRoot = __dirname;
+if (!fs.existsSync(path.join(projectRoot, 'benchmark'))) {
+    projectRoot = path.resolve(__dirname, '..');
+}
 const benchmarkDir = path.join(projectRoot, 'benchmark');
 
 // Helper to check if WebAssembly is supported

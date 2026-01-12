@@ -2,8 +2,8 @@
  (rec
   (type $Shape (struct (field $parent (ref null $Shape)) (field $key i32) (field $offset i32)))
   (type $Storage (array (mut anyref)))
-  (type $Object (struct (field $shape (mut (ref $Shape))) (field $storage (mut (ref $Storage)))))
-  (type $Closure (struct (field $func (ref func)) (field $env anyref)))
+  (type $Object (sub (struct (field $shape (mut (ref $Shape))) (field $storage (mut (ref $Storage))) (field $proto (mut anyref)))))
+  (type $Closure (sub $Object (struct (field $shape (mut (ref $Shape))) (field $storage (mut (ref $Storage))) (field $proto (mut anyref)) (field $func (ref func)) (field $env anyref))))
   (type $BinaryOpFunc (func (param anyref anyref) (result anyref)))
  )
  (type $ClosureSig0 (func (param anyref anyref) (result anyref)))
