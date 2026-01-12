@@ -86,6 +86,9 @@ The compiler generates many temporary locals (`$temp_0`, etc.) to hold intermedi
 **Observation:**
 Polymorphic code often checks a type with `ref.test` then casts with `ref.cast`.
 
+**Status:**
+Implemented for `$console_log`.
+
 **Optimization:**
 -   Use `br_on_cast` to perform both in one step, branching on success or failure as appropriate for the control flow.
 
