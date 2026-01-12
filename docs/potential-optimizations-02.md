@@ -5,29 +5,19 @@ Following an analysis of the generated WAT files in `testdata/`, several specifi
 ## 1. Short-Circuiting Logic in Inline Caches [Implemented]
 
 **Status:** Implemented
-**Update:** The compiler now uses nested `if` blocks for `$add_cached` and `$sub_cached` to implement short-circuiting logic. This avoids evaluating the second type check if the first one fails.
+**Update:** The compiler now uses `br_if` logic within a `block` to implement short-circuiting in `$add_cached` and `$sub_cached`. This provides a cleaner control flow structure than nested `if` blocks.
 
 **Observation (Original):**
 The current implementation of inline caches (e.g., `$add_cached`, `$get_field_cached`) uses `i32.and` to combine type checks. In WebAssembly, `i32.and` is a bitwise operator and evaluates both operands eagerly.
 
 **Optimized Pattern:**
 ```wat
-(if (result anyref) (i32.eq (call $get_type_id (local.get $lhs)) ...)
-  (then
-    (if (result anyref) (i32.eq (call $get_type_id (local.get $rhs)) ...)
-      (then
-        ;; Fast path
-        (call_ref $BinaryOpFunc ...)
-      )
-      (else
-        (call $add_slow ...)
-      )
-    )
-  )
-  (else
-    (call $add_slow ...)
-  )
+(block $slow
+  (br_if $slow (i32.ne (call $get_type_id (local.get $lhs)) ...))
+  (br_if $slow (i32.ne (call $get_type_id (local.get $rhs)) ...))
+  (return (call_ref $BinaryOpFunc ...))
 )
+(call $add_slow ...)
 ```
 
 ## 2. Redundant Type Casts (`ref.as_non_null`)
