@@ -1,7 +1,7 @@
 import ts from 'typescript';
 import binaryen from 'binaryen';
 import { compileFunction } from './function.ts';
-import { resetPropertyMap, resetGlobalCallSites, globalCallSites, generatedFunctions, resetGeneratedFunctions, binaryOpCallSites, type CompilerOptions, resetStringMap, stringDataSegments } from './context.ts';
+import { resetPropertyMap, resetGlobalCallSites, globalCallSites, generatedFunctions, resetGeneratedFunctions, binaryOpCallSites, type CompilerOptions, resetStringMap, stringDataSegments, registerStringLiteral } from './context.ts';
 import { resetClosureCounter } from './expression.ts';
 
 // Export for other files to use if needed
@@ -22,6 +22,9 @@ export function compile(source: string, options?: CompilerOptions): string {
   resetGeneratedFunctions();
   resetClosureCounter();
   resetStringMap();
+
+  const nullData = registerStringLiteral("null");
+  const objData = registerStringLiteral("[object Object]");
 
   const sourceFile = ts.createSourceFile(
     'temp.js',
@@ -132,6 +135,16 @@ export function compile(source: string, options?: CompilerOptions): string {
 
   ${globalsDecl}
   ${dataSegmentsDecl}
+
+  ;; String Pooling for Runtime Constants
+  (global $g_str_null (mut (ref null $String)) (ref.null $String))
+  (global $g_str_obj (mut (ref null $String)) (ref.null $String))
+
+  (func $runtime_init
+    (global.set $g_str_null (array.new_data $String ${nullData} (i32.const 0) (i32.const 4)))
+    (global.set $g_str_obj (array.new_data $String ${objData} (i32.const 0) (i32.const 15)))
+  )
+  (start $runtime_init)
 
   (func $new_root_shape (result (ref $Shape))
     (struct.new $Shape
@@ -276,7 +289,7 @@ export function compile(source: string, options?: CompilerOptions): string {
   (func $console_log (param $val anyref)
     (if (ref.is_null (local.get $val))
       (then
-        (call $print_string_helper (array.new_fixed $String 4 (i32.const 110) (i32.const 117) (i32.const 108) (i32.const 108)))
+        (call $print_string_helper (ref.as_non_null (global.get $g_str_null)))
         (call $print_char (i32.const 10))
       )
       (else
@@ -303,7 +316,7 @@ export function compile(source: string, options?: CompilerOptions): string {
                       (else
                          (if (ref.test (ref $Object) (local.get $val))
                            (then
-                             (call $print_string_helper (array.new_fixed $String 15 (i32.const 91) (i32.const 111) (i32.const 98) (i32.const 106) (i32.const 101) (i32.const 99) (i32.const 116) (i32.const 32) (i32.const 79) (i32.const 98) (i32.const 106) (i32.const 101) (i32.const 99) (i32.const 116) (i32.const 93)))
+                             (call $print_string_helper (ref.as_non_null (global.get $g_str_obj)))
                              (call $print_char (i32.const 10))
                            )
                          )
