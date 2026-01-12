@@ -7,6 +7,10 @@ export const generatedFunctions: string[] = [];
 export const stringMap: Map<string, string> = new Map();
 export const stringDataSegments: string[] = [];
 
+// Shape caching
+export const shapeCache: Map<string, string> = new Map();
+export const shapeGlobals: string[] = [];
+
 export function getPropertyId(name: string): number {
     if (!propertyMap.has(name)) {
         propertyMap.set(name, propertyMap.size);
@@ -27,6 +31,11 @@ export function resetGlobalCallSites() {
 export function resetStringMap() {
     stringMap.clear();
     stringDataSegments.length = 0;
+}
+
+export function resetShapeCache() {
+    shapeCache.clear();
+    shapeGlobals.length = 0;
 }
 
 export function registerGlobalCallSite(): string {
@@ -57,14 +66,36 @@ export function registerStringLiteral(text: string): string {
     const name = `$str_data_${stringMap.size}`;
     stringMap.set(text, name);
     // Escape string for WAT
-    // We can use JSON.stringify to handle escapes, but we need to strip quotes
-    // and make sure it's WAT compatible.
-    // Actually, binaryen parseText supports "..."
-    // But we need to be careful about non-printable chars.
-    // Let's use hex escapes for safety if needed, or just standard JSON escaping.
-    // For now, let's trust JSON.stringify but remove surrounding quotes.
     const escaped = JSON.stringify(text).slice(1, -1);
     stringDataSegments.push(`(data ${name} "${escaped}")`);
+    return name;
+}
+
+// Register Object Literal Shape
+export function registerShape(keys: string[]): string {
+    const keyStr = keys.join(',');
+    if (shapeCache.has(keyStr)) {
+        return shapeCache.get(keyStr)!;
+    }
+
+    const name = `$shape_literal_${shapeCache.size}`;
+    shapeCache.set(keyStr, name);
+
+    // Build the nested struct.new chain
+    // Root: (struct.new $Shape (ref.null $Shape) (i32.const -1) (i32.const -1))
+    let shapeCode = `(struct.new $Shape (ref.null $Shape) (i32.const -1) (i32.const -1))`;
+
+    // Extend for each key
+    keys.forEach((key, index) => {
+        const id = getPropertyId(key);
+        // $extend_shape logic: (struct.new $Shape parent key offset)
+        shapeCode = `(struct.new $Shape ${shapeCode} (i32.const ${id}) (i32.const ${index}))`;
+    });
+
+    // Define the global
+    // It's an immutable global initialized with a constant expression
+    shapeGlobals.push(`(global ${name} (ref $Shape) ${shapeCode})`);
+
     return name;
 }
 

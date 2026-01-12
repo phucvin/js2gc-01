@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import { getPropertyId, CompilationContext, registerGlobalCallSite, registerGeneratedFunction, registerBinaryOpCallSite, registerStringLiteral } from './context.ts';
+import { getPropertyId, CompilationContext, registerGlobalCallSite, registerGeneratedFunction, registerBinaryOpCallSite, registerStringLiteral, registerShape } from './context.ts';
 import { compileBody } from './statement.ts';
 
 let closureCounter = 0;
@@ -37,20 +37,15 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
     const capturedVars = closureCtx.getCapturedVars();
     const totalCaptured = capturedVars.length;
 
-    let envCreationCode = `(call $new_root_shape)`;
-    let offset = 0;
-    for (const varName of capturedVars) {
-        const keyId = getPropertyId(varName);
-        envCreationCode = `(call $extend_shape ${envCreationCode} (i32.const ${keyId}) (i32.const ${offset}))`;
-        offset++;
-    }
+    const envShapeGlobal = registerShape(capturedVars);
+    const envCreationCode = `(global.get ${envShapeGlobal})`;
 
     const funcName = `closure_${closureCounter++}`;
 
     const envLocal = ctx.getTempLocal('(ref null $Object)');
     let envSetupCode = '';
 
-    offset = 0;
+    let offset = 0;
     for (const varName of capturedVars) {
         const lookup = ctx.lookup(varName);
         let valCode = '';
@@ -78,22 +73,6 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
         } else {
              envAccess = `(ref.as_non_null (local.get ${envLocal}))`;
         }
-
-        // IMPORTANT: The order of evaluation of arguments to `call $set_storage`:
-        // 1. envAccess (which does `new_object` via `tee` if first)
-        // 2. index (i32.const)
-        // 3. valCode (value expression)
-        //
-        // Original code:
-        // (local.set env (new_object))
-        // (set_storage (get env) idx (valCode))
-        // Order: `new_object`, then `valCode` (as part of set_storage args).
-        //
-        // New code:
-        // (set_storage (tee env (new_object)) idx (valCode))
-        // Order: `new_object`, then `valCode`.
-        //
-        // So the order is preserved.
 
         envSetupCode += `(call $set_storage ${envAccess} (i32.const ${offset}) ${valCode})\n`;
         offset++;
@@ -156,14 +135,6 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext, 
     }
 
     const code = compileExpressionValue(expr, ctx, dropResult);
-
-    // Check if the expression handler already respected dropResult
-    // We can't easily know if compileExpressionValue returned a dropped value or not,
-    // unless we pass dropResult to it.
-    // I will modify compileExpressionValue to accept dropResult.
-    // But currently compileExpression calls compileExpressionValue then does drop.
-    // If compileExpressionValue handles dropResult, we shouldn't drop again.
-
     return code;
 }
 
@@ -209,17 +180,17 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
   } else if (expr.kind === ts.SyntaxKind.FalseKeyword) {
       return fallbackPure(`(ref.i31 (i32.const 0))`);
   } else if (ts.isObjectLiteralExpression(expr)) {
-      let shapeCode = `(call $new_root_shape)`;
-      let offset = 0;
+      const propNames: string[] = [];
       for (const prop of expr.properties) {
           if (ts.isPropertyAssignment(prop) && prop.name && ts.isIdentifier(prop.name)) {
-              const keyId = getPropertyId(prop.name.text);
-              shapeCode = `(call $extend_shape ${shapeCode} (i32.const ${keyId}) (i32.const ${offset}))`;
-              offset++;
+              propNames.push(prop.name.text);
           }
       }
 
-      const totalProps = offset;
+      const shapeGlobal = registerShape(propNames);
+      const shapeCode = `(global.get ${shapeGlobal})`;
+
+      const totalProps = propNames.length;
       if (totalProps === 0) {
           const code = `(call $new_object ${shapeCode} (i32.const 0))`;
           return dropResult ? `(drop ${code})` : code;
@@ -228,7 +199,7 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
       const objLocal = ctx.getTempLocal('(ref null $Object)');
 
       let setPropsCode = '';
-      offset = 0;
+      let offset = 0;
       for (const prop of expr.properties) {
           if (ts.isPropertyAssignment(prop) && prop.name && ts.isIdentifier(prop.name)) {
               const valCode = compileExpression(prop.initializer, ctx);

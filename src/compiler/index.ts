@@ -1,7 +1,7 @@
 import ts from 'typescript';
 import binaryen from 'binaryen';
 import { compileFunction } from './function.ts';
-import { resetPropertyMap, resetGlobalCallSites, globalCallSites, generatedFunctions, resetGeneratedFunctions, binaryOpCallSites, type CompilerOptions, resetStringMap, stringDataSegments, registerStringLiteral } from './context.ts';
+import { resetPropertyMap, resetGlobalCallSites, globalCallSites, generatedFunctions, resetGeneratedFunctions, binaryOpCallSites, type CompilerOptions, resetStringMap, stringDataSegments, registerStringLiteral, resetShapeCache, shapeGlobals } from './context.ts';
 import { resetClosureCounter } from './expression.ts';
 
 // Export for other files to use if needed
@@ -22,6 +22,7 @@ export function compile(source: string, options?: CompilerOptions): string {
   resetGeneratedFunctions();
   resetClosureCounter();
   resetStringMap();
+  resetShapeCache();
 
   const nullData = registerStringLiteral("null");
   const objData = registerStringLiteral("[object Object]");
@@ -71,6 +72,11 @@ export function compile(source: string, options?: CompilerOptions): string {
       for (const siteName of binaryOpCallSites) {
           globalsDecl += `(global ${siteName} (mut (ref $BinaryOpCallSite)) (struct.new $BinaryOpCallSite (i32.const 0) (i32.const 0) (ref.null $BinaryOpFunc)))\n`;
       }
+  }
+
+  // Append shape globals
+  if (shapeGlobals.length > 0) {
+      globalsDecl += '\n' + shapeGlobals.join('\n');
   }
 
   // Generate data segments
@@ -553,6 +559,8 @@ export function compile(source: string, options?: CompilerOptions): string {
   )
 ${wasmFuncs}
 )`;
+
+  // console.log(wat);
 
   const module = binaryen.parseText(wat);
   module.setFeatures(

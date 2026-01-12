@@ -14,16 +14,40 @@
  (type $10 (func (param i32)))
  (type $11 (func (param f64)))
  (type $12 (func))
- (type $13 (func (result (ref $Shape))))
- (type $14 (func (param (ref $Shape) i32 i32) (result (ref $Shape))))
- (type $15 (func (param (ref $Shape) i32) (result (ref $Object))))
- (type $16 (func (param (ref $Object) i32 anyref)))
- (type $17 (func (param (ref $String))))
- (type $18 (func (param anyref)))
- (type $19 (func (result anyref)))
+ (type $13 (func (param (ref $Shape) i32) (result (ref $Object))))
+ (type $14 (func (param (ref $Object) i32 anyref)))
+ (type $15 (func (param (ref $String))))
+ (type $16 (func (param anyref)))
+ (type $17 (func (result anyref)))
  (import "env" "print_i32" (func $print_i32 (type $10) (param i32)))
  (import "env" "print_f64" (func $print_f64 (type $11) (param f64)))
  (import "env" "print_char" (func $print_char (type $10) (param i32)))
+ (global $shape_literal_0 (ref $Shape) (struct.new $Shape
+  (struct.new $Shape
+   (struct.new $Shape
+    (ref.null none)
+    (i32.const -1)
+    (i32.const -1)
+   )
+   (i32.const 0)
+   (i32.const 0)
+  )
+  (i32.const 1)
+  (i32.const 1)
+ ))
+ (global $shape_literal_1 (ref $Shape) (struct.new $Shape
+  (struct.new $Shape
+   (struct.new $Shape
+    (ref.null none)
+    (i32.const -1)
+    (i32.const -1)
+   )
+   (i32.const 2)
+   (i32.const 0)
+  )
+  (i32.const 3)
+  (i32.const 1)
+ ))
  (global $g_str_null (mut (ref null $String)) (ref.null none))
  (global $g_str_obj (mut (ref null $String)) (ref.null none))
  (data $str_data_0 "null")
@@ -45,21 +69,7 @@
    )
   )
  )
- (func $new_root_shape (type $13) (result (ref $Shape))
-  (struct.new $Shape
-   (ref.null none)
-   (i32.const -1)
-   (i32.const -1)
-  )
- )
- (func $extend_shape (type $14) (param $parent (ref $Shape)) (param $key i32) (param $offset i32) (result (ref $Shape))
-  (struct.new $Shape
-   (local.get $parent)
-   (local.get $key)
-   (local.get $offset)
-  )
- )
- (func $new_object (type $15) (param $shape (ref $Shape)) (param $size i32) (result (ref $Object))
+ (func $new_object (type $13) (param $shape (ref $Shape)) (param $size i32) (result (ref $Object))
   (struct.new $Object
    (local.get $shape)
    (array.new_default $Storage
@@ -67,7 +77,7 @@
    )
   )
  )
- (func $set_storage (type $16) (param $obj (ref $Object)) (param $idx i32) (param $val anyref)
+ (func $set_storage (type $14) (param $obj (ref $Object)) (param $idx i32) (param $val anyref)
   (array.set $Storage
    (struct.get $Object $storage
     (local.get $obj)
@@ -76,7 +86,7 @@
    (local.get $val)
   )
  )
- (func $print_string_helper (type $17) (param $str (ref $String))
+ (func $print_string_helper (type $15) (param $str (ref $String))
   (local $len i32)
   (local $i i32)
   (local.set $len
@@ -111,7 +121,7 @@
    )
   )
  )
- (func $console_log (type $18) (param $val anyref)
+ (func $console_log (type $16) (param $val anyref)
   (block $null
    (drop
     (br_on_null $null
@@ -184,7 +194,7 @@
    (i32.const 10)
   )
  )
- (func $main (type $19) (result anyref)
+ (func $main (type $17) (result anyref)
   (local $temp_0 (ref null $Object))
   (local $temp_1 (ref null $Object))
   (call $console_log
@@ -193,15 +203,7 @@
      (ref.as_non_null
       (local.tee $temp_0
        (call $new_object
-        (call $extend_shape
-         (call $extend_shape
-          (call $new_root_shape)
-          (i32.const 0)
-          (i32.const 0)
-         )
-         (i32.const 1)
-         (i32.const 1)
-        )
+        (global.get $shape_literal_0)
         (i32.const 2)
        )
       )
@@ -232,15 +234,7 @@
       (ref.as_non_null
        (local.tee $temp_1
         (call $new_object
-         (call $extend_shape
-          (call $extend_shape
-           (call $new_root_shape)
-           (i32.const 2)
-           (i32.const 0)
-          )
-          (i32.const 3)
-          (i32.const 1)
-         )
+         (global.get $shape_literal_1)
          (i32.const 2)
         )
        )

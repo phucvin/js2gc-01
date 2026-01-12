@@ -3,7 +3,7 @@
   (type $Shape (struct (field $parent (ref null $Shape)) (field $key i32) (field $offset i32)))
   (type $Storage (array (mut anyref)))
   (type $Object (struct (field $shape (mut (ref $Shape))) (field $storage (mut (ref $Storage)))))
-  (type $Closure (struct (field $func funcref) (field $env anyref)))
+  (type $Closure (struct (field $func (ref func)) (field $env anyref)))
   (type $BinaryOpFunc (func (param anyref anyref) (result anyref)))
  )
  (type $ClosureSig0 (func (param anyref anyref) (result anyref)))
@@ -12,17 +12,37 @@
  (type $String (array (mut i8)))
  (type $9 (func (param i32)))
  (type $10 (func (param f64)))
- (type $11 (func (param (ref $String))))
- (type $12 (func (param anyref)))
- (type $13 (func (param anyref) (result i32)))
- (type $14 (func (param anyref) (result anyref)))
- (type $15 (func (result anyref)))
+ (type $11 (func))
+ (type $12 (func (param (ref $String))))
+ (type $13 (func (param anyref)))
+ (type $14 (func (param anyref) (result i32)))
+ (type $15 (func (param anyref) (result anyref)))
+ (type $16 (func (result anyref)))
  (import "env" "print_i32" (func $print_i32 (type $9) (param i32)))
  (import "env" "print_f64" (func $print_f64 (type $10) (param f64)))
  (import "env" "print_char" (func $print_char (type $9) (param i32)))
+ (global $g_str_null (mut (ref null $String)) (ref.null none))
+ (global $g_str_obj (mut (ref null $String)) (ref.null none))
+ (data $str_data_0 "null")
+ (data $str_data_1 "[object Object]")
  (elem declare func $add_f64_f64 $add_f64_i32 $add_i32_f64 $add_i32_i32 $add_unsupported $sub_f64_f64 $sub_f64_i32 $sub_i32_f64 $sub_i32_i32 $sub_unsupported)
  (export "main" (func $main))
- (func $print_string_helper (type $11) (param $str (ref $String))
+ (start $runtime_init)
+ (func $runtime_init (type $11)
+  (global.set $g_str_null
+   (array.new_data $String $str_data_0
+    (i32.const 0)
+    (i32.const 4)
+   )
+  )
+  (global.set $g_str_obj
+   (array.new_data $String $str_data_1
+    (i32.const 0)
+    (i32.const 15)
+   )
+  )
+ )
+ (func $print_string_helper (type $12) (param $str (ref $String))
   (local $len i32)
   (local $i i32)
   (local.set $len
@@ -57,123 +77,80 @@
    )
   )
  )
- (func $console_log (type $12) (param $val anyref)
-  (if
-   (ref.is_null
-    (local.get $val)
-   )
-   (then
-    (call $print_string_helper
-     (array.new_fixed $String 4
-      (i32.const 110)
-      (i32.const 117)
-      (i32.const 108)
-      (i32.const 108)
-     )
-    )
-    (call $print_char
-     (i32.const 10)
+ (func $console_log (type $13) (param $val anyref)
+  (block $null
+   (drop
+    (br_on_null $null
+     (local.get $val)
     )
    )
-   (else
-    (if
-     (ref.test (ref i31)
-      (local.get $val)
-     )
-     (then
+   (call $print_i32
+    (i31.get_s
+     (block $i31 (result (ref i31))
       (call $print_i32
-       (i31.get_s
-        (ref.cast (ref i31)
-         (local.get $val)
-        )
-       )
-      )
-     )
-     (else
-      (if
-       (ref.test (ref $BoxedI32)
-        (local.get $val)
-       )
-       (then
-        (call $print_i32
-         (struct.get $BoxedI32 0
-          (ref.cast (ref $BoxedI32)
-           (local.get $val)
-          )
-         )
-        )
-       )
-       (else
-        (if
-         (ref.test (ref $BoxedF64)
-          (local.get $val)
-         )
-         (then
-          (call $print_f64
-           (struct.get $BoxedF64 0
-            (ref.cast (ref $BoxedF64)
-             (local.get $val)
-            )
-           )
-          )
-         )
-         (else
-          (if
-           (ref.test (ref $String)
-            (local.get $val)
-           )
-           (then
+       (struct.get $BoxedI32 0
+        (block $boxed_i32 (result (ref $BoxedI32))
+         (call $print_f64
+          (struct.get $BoxedF64 0
+           (block $boxed_f64 (result (ref $BoxedF64))
             (call $print_string_helper
-             (ref.cast (ref $String)
-              (local.get $val)
-             )
-            )
-            (call $print_char
-             (i32.const 10)
-            )
-           )
-           (else
-            (if
-             (ref.test (ref $Object)
-              (local.get $val)
-             )
-             (then
+             (block $string (result (ref $String))
+              (drop
+               (block $object (result (ref $Object))
+                (drop
+                 (br_on_cast $object anyref (ref $Object)
+                  (br_on_cast $string anyref (ref $String)
+                   (br_on_cast $boxed_f64 anyref (ref $BoxedF64)
+                    (br_on_cast $boxed_i32 anyref (ref $BoxedI32)
+                     (br_on_cast $i31 anyref (ref i31)
+                      (local.get $val)
+                     )
+                    )
+                   )
+                  )
+                 )
+                )
+                (return)
+               )
+              )
               (call $print_string_helper
-               (array.new_fixed $String 15
-                (i32.const 91)
-                (i32.const 111)
-                (i32.const 98)
-                (i32.const 106)
-                (i32.const 101)
-                (i32.const 99)
-                (i32.const 116)
-                (i32.const 32)
-                (i32.const 79)
-                (i32.const 98)
-                (i32.const 106)
-                (i32.const 101)
-                (i32.const 99)
-                (i32.const 116)
-                (i32.const 93)
+               (ref.as_non_null
+                (global.get $g_str_obj)
                )
               )
               (call $print_char
                (i32.const 10)
               )
+              (return)
              )
             )
+            (call $print_char
+             (i32.const 10)
+            )
+            (return)
            )
           )
          )
+         (return)
         )
        )
       )
+      (return)
      )
     )
    )
+   (return)
+  )
+  (call $print_string_helper
+   (ref.as_non_null
+    (global.get $g_str_null)
+   )
+  )
+  (call $print_char
+   (i32.const 10)
   )
  )
- (func $get_type_id (type $13) (param $val anyref) (result i32)
+ (func $get_type_id (type $14) (param $val anyref) (result i32)
   (if
    (ref.is_null
     (local.get $val)
@@ -570,7 +547,7 @@
    )
   )
  )
- (func $fib (type $14) (param $user_n anyref) (result anyref)
+ (func $fib (type $15) (param $user_n anyref) (result anyref)
   (if
    (i31.get_s
     (ref.cast (ref i31)
@@ -610,7 +587,7 @@
    )
   )
  )
- (func $main (type $15) (result anyref)
+ (func $main (type $16) (result anyref)
   (call $console_log
    (call $fib
     (ref.i31
