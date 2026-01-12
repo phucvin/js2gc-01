@@ -18,7 +18,7 @@
  (type $14 (func (param (ref $Shape) i32) (result (ref $Object))))
  (type $15 (func (param (ref $Object) i32 anyref)))
  (type $16 (func (param (ref $String))))
- (type $17 (func (param anyref) (result anyref)))
+ (type $17 (func (param anyref)))
  (type $18 (func (result anyref)))
  (import "env" "print_i32" (func $print_i32 (type $10) (param i32)))
  (import "env" "print_f64" (func $print_f64 (type $11) (param f64)))
@@ -90,7 +90,7 @@
    )
   )
  )
- (func $console_log (type $17) (param $val anyref) (result anyref)
+ (func $console_log (type $17) (param $val anyref)
   (if
    (ref.is_null
     (local.get $val)
@@ -205,23 +205,66 @@
     )
    )
   )
-  (ref.null none)
  )
  (func $main (type $18) (result anyref)
   (local $temp_0 (ref null $Object))
   (local $temp_1 (ref null $Object))
   (drop
+   (block (result anyref)
+    (call $console_log
+     (block (result (ref $Object))
+      (local.set $temp_0
+       (call $new_object
+        (call $extend_shape
+         (call $extend_shape
+          (call $new_root_shape)
+          (i32.const 0)
+          (i32.const 0)
+         )
+         (i32.const 1)
+         (i32.const 1)
+        )
+        (i32.const 2)
+       )
+      )
+      (call $set_storage
+       (ref.as_non_null
+        (local.get $temp_0)
+       )
+       (i32.const 0)
+       (ref.i31
+        (i32.const 10)
+       )
+      )
+      (call $set_storage
+       (ref.as_non_null
+        (local.get $temp_0)
+       )
+       (i32.const 1)
+       (ref.i31
+        (i32.const 20)
+       )
+      )
+      (ref.as_non_null
+       (local.get $temp_0)
+      )
+     )
+    )
+    (ref.null none)
+   )
+  )
+  (block (result anyref)
    (call $console_log
     (block (result (ref $Object))
-     (local.set $temp_0
+     (local.set $temp_1
       (call $new_object
        (call $extend_shape
         (call $extend_shape
          (call $new_root_shape)
-         (i32.const 0)
+         (i32.const 2)
          (i32.const 0)
         )
-        (i32.const 1)
+        (i32.const 3)
         (i32.const 1)
        )
        (i32.const 2)
@@ -229,70 +272,32 @@
      )
      (call $set_storage
       (ref.as_non_null
-       (local.get $temp_0)
+       (local.get $temp_1)
       )
       (i32.const 0)
-      (ref.i31
-       (i32.const 10)
+      (array.new_fixed $String 5
+       (i32.const 104)
+       (i32.const 101)
+       (i32.const 108)
+       (i32.const 108)
+       (i32.const 111)
       )
      )
      (call $set_storage
       (ref.as_non_null
-       (local.get $temp_0)
+       (local.get $temp_1)
       )
       (i32.const 1)
-      (ref.i31
-       (i32.const 20)
+      (struct.new $BoxedF64
+       (f64.const 3.14)
       )
      )
      (ref.as_non_null
-      (local.get $temp_0)
+      (local.get $temp_1)
      )
     )
    )
-  )
-  (call $console_log
-   (block (result (ref $Object))
-    (local.set $temp_1
-     (call $new_object
-      (call $extend_shape
-       (call $extend_shape
-        (call $new_root_shape)
-        (i32.const 2)
-        (i32.const 0)
-       )
-       (i32.const 3)
-       (i32.const 1)
-      )
-      (i32.const 2)
-     )
-    )
-    (call $set_storage
-     (ref.as_non_null
-      (local.get $temp_1)
-     )
-     (i32.const 0)
-     (array.new_fixed $String 5
-      (i32.const 104)
-      (i32.const 101)
-      (i32.const 108)
-      (i32.const 108)
-      (i32.const 111)
-     )
-    )
-    (call $set_storage
-     (ref.as_non_null
-      (local.get $temp_1)
-     )
-     (i32.const 1)
-     (struct.new $BoxedF64
-      (f64.const 3.14)
-     )
-    )
-    (ref.as_non_null
-     (local.get $temp_1)
-    )
-   )
+   (ref.null none)
   )
  )
 )

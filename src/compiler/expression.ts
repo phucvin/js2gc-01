@@ -202,7 +202,7 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
                  expr.expression.name.text === 'log') {
           if (expr.arguments.length > 0) {
               const arg = compileExpression(expr.arguments[0], ctx);
-              return `(call $console_log ${arg})`;
+              return `(block (result anyref) (call $console_log ${arg}) (ref.null any))`;
           } else {
               return `(ref.null any)`;
           }
@@ -308,14 +308,17 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
                    return `(local.tee ${localName} ${right})`;
               } else {
                    const keyId = getPropertyId(localName);
-                   return `(call $put_field (ref.cast (ref $Object) (local.get $env)) (i32.const ${keyId}) ${right})`;
+                   const tempVal = ctx.getTempLocal('anyref');
+                   return `(block (result anyref) (local.set ${tempVal} ${right}) (call $put_field (ref.cast (ref $Object) (local.get $env)) (i32.const ${keyId}) (local.get ${tempVal})) (local.get ${tempVal}))`;
               }
           } else if (ts.isPropertyAccessExpression(expr.left)) {
               if (ts.isIdentifier(expr.left.name)) {
                   const keyId = getPropertyId(expr.left.name.text);
                   const objCode = compileExpression(expr.left.expression, ctx);
                   const valCode = compileExpression(expr.right, ctx);
-                  return `(call $put_field (ref.cast (ref $Object) ${objCode}) (i32.const ${keyId}) ${valCode})`;
+                  const tempObj = ctx.getTempLocal('anyref');
+                  const tempVal = ctx.getTempLocal('anyref');
+                  return `(block (result anyref) (local.set ${tempObj} ${objCode}) (local.set ${tempVal} ${valCode}) (call $put_field (ref.cast (ref $Object) (local.get ${tempObj})) (i32.const ${keyId}) (local.get ${tempVal})) (local.get ${tempVal}))`;
               }
           }
       }
@@ -372,7 +375,6 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
                   return `(block (result anyref)
                        (local.set ${tempLocal} ${envGet})
                        (call $put_field (ref.cast (ref $Object) (local.get $env)) (i32.const ${keyId}) ${addCall})
-                       (drop)
                        (local.get ${tempLocal})
                   )`;
               }

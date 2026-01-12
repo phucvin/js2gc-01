@@ -15,7 +15,7 @@
  (type $11 (func (param i32)))
  (type $12 (func (param f64)))
  (type $13 (func (param (ref $String))))
- (type $14 (func (param anyref) (result anyref)))
+ (type $14 (func (param anyref)))
  (type $15 (func (param anyref) (result i32)))
  (type $16 (func (param anyref anyref (ref $BinaryOpCallSite)) (result anyref)))
  (type $17 (func (result anyref)))
@@ -89,7 +89,7 @@
    )
   )
  )
- (func $console_log (type $14) (param $val anyref) (result anyref)
+ (func $console_log (type $14) (param $val anyref)
   (if
    (ref.is_null
     (local.get $val)
@@ -204,7 +204,6 @@
     )
    )
   )
-  (ref.null none)
  )
  (func $get_type_id (type $15) (param $val anyref) (result i32)
   (if
@@ -533,8 +532,11 @@
    (ref.null none)
   )
   (drop
-   (call $console_log
-    (local.get $user_c)
+   (block (result nullref)
+    (call $console_log
+     (local.get $user_c)
+    )
+    (ref.null none)
    )
   )
   (local.set $user_d
@@ -556,8 +558,11 @@
    (ref.null none)
   )
   (drop
-   (call $console_log
-    (local.get $user_e)
+   (block (result nullref)
+    (call $console_log
+     (local.get $user_e)
+    )
+    (ref.null none)
    )
   )
   (local.set $user_f
@@ -579,8 +584,11 @@
    (ref.null none)
   )
   (drop
-   (call $console_log
-    (local.get $user_g)
+   (block (result nullref)
+    (call $console_log
+     (local.get $user_g)
+    )
+    (ref.null none)
    )
   )
   (local.set $user_h
@@ -602,8 +610,11 @@
    (ref.null none)
   )
   (drop
-   (call $console_log
-    (local.get $user_i)
+   (block (result nullref)
+    (call $console_log
+     (local.get $user_i)
+    )
+    (ref.null none)
    )
   )
   (local.set $user_sum
@@ -669,8 +680,11 @@
   (drop
    (ref.null none)
   )
-  (call $console_log
-   (local.get $user_sum)
+  (block (result nullref)
+   (call $console_log
+    (local.get $user_sum)
+   )
+   (ref.null none)
   )
  )
 )

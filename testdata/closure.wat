@@ -21,7 +21,7 @@
  (type $17 (func (param (ref $Shape) i32) (result i32)))
  (type $18 (func (param (ref $Object) (ref $CallSite) i32) (result anyref)))
  (type $19 (func (param (ref $String))))
- (type $20 (func (param anyref) (result anyref)))
+ (type $20 (func (param anyref)))
  (type $21 (func (param anyref) (result i32)))
  (type $22 (func (param anyref anyref (ref $BinaryOpCallSite)) (result anyref)))
  (type $23 (func (result anyref)))
@@ -222,7 +222,7 @@
    )
   )
  )
- (func $console_log (type $20) (param $val anyref) (result anyref)
+ (func $console_log (type $20) (param $val anyref)
   (if
    (ref.is_null
     (local.get $val)
@@ -337,7 +337,6 @@
     )
    )
   )
-  (ref.null none)
  )
  (func $get_type_id (type $21) (param $val anyref) (result i32)
   (if
@@ -660,8 +659,11 @@
   (drop
    (ref.null none)
   )
-  (call $console_log
-   (local.get $user_res)
+  (block (result anyref)
+   (call $console_log
+    (local.get $user_res)
+   )
+   (ref.null none)
   )
  )
  (func $closure_0 (type $ClosureSig1) (param $env anyref) (param $this anyref) (param $user_y anyref) (result anyref)

@@ -158,7 +158,7 @@ export function compile(source: string, options?: CompilerOptions): string {
     )
   )
 
-  (func $put_field (param $obj (ref $Object)) (param $key i32) (param $val anyref) (result anyref)
+  (func $put_field (param $obj (ref $Object)) (param $key i32) (param $val anyref)
     (local $shape (ref $Shape))
     (local $offset i32)
     (local $old_storage (ref $Storage))
@@ -197,7 +197,6 @@ export function compile(source: string, options?: CompilerOptions): string {
         (struct.set $Object $storage (local.get $obj) (local.get $new_storage))
       )
     )
-    (local.get $val)
   )
 
   (func $lookup_in_shape (param $shape (ref $Shape)) (param $key i32) (result i32)
@@ -269,7 +268,7 @@ export function compile(source: string, options?: CompilerOptions): string {
     )
   )
 
-  (func $console_log (param $val anyref) (result anyref)
+  (func $console_log (param $val anyref)
     (if (ref.is_null (local.get $val))
       (then
         (call $print_string_helper (array.new_fixed $String 4 (i32.const 110) (i32.const 117) (i32.const 108) (i32.const 108)))
@@ -313,7 +312,6 @@ export function compile(source: string, options?: CompilerOptions): string {
         )
       )
     )
-    (ref.null any)
   )
 
   (func $get_type_id (param $val anyref) (result i32)
