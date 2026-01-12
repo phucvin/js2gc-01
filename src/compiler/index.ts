@@ -1,7 +1,7 @@
 import ts from 'typescript';
 import binaryen from 'binaryen';
 import { compileFunction } from './function.ts';
-import { resetPropertyMap, resetGlobalCallSites, globalCallSites, generatedFunctions, resetGeneratedFunctions, binaryOpCallSites, type CompilerOptions } from './context.ts';
+import { resetPropertyMap, resetGlobalCallSites, globalCallSites, generatedFunctions, resetGeneratedFunctions, binaryOpCallSites, type CompilerOptions, resetStringMap, stringDataSegments } from './context.ts';
 import { resetClosureCounter } from './expression.ts';
 
 // Export for other files to use if needed
@@ -21,6 +21,7 @@ export function compile(source: string, options?: CompilerOptions): string {
   resetGlobalCallSites();
   resetGeneratedFunctions();
   resetClosureCounter();
+  resetStringMap();
 
   const sourceFile = ts.createSourceFile(
     'temp.js',
@@ -68,6 +69,9 @@ export function compile(source: string, options?: CompilerOptions): string {
           globalsDecl += `(global ${siteName} (mut (ref $BinaryOpCallSite)) (struct.new $BinaryOpCallSite (i32.const 0) (i32.const 0) (ref.null $BinaryOpFunc)))\n`;
       }
   }
+
+  // Generate data segments
+  const dataSegmentsDecl = stringDataSegments.join('\n');
 
   // Define some closure types for call_ref
   const closureSigs = `
@@ -127,6 +131,7 @@ export function compile(source: string, options?: CompilerOptions): string {
   (elem declare func $sub_i32_i32 $sub_f64_f64 $sub_i32_f64 $sub_f64_i32 $sub_unsupported)
 
   ${globalsDecl}
+  ${dataSegmentsDecl}
 
   (func $new_root_shape (result (ref $Shape))
     (struct.new $Shape
@@ -535,7 +540,8 @@ ${wasmFuncs}
   const module = binaryen.parseText(wat);
   module.setFeatures(
     binaryen.Features.GC |
-    binaryen.Features.ReferenceTypes
+    binaryen.Features.ReferenceTypes |
+    binaryen.Features.BulkMemory
   );
 
   module.runPasses([

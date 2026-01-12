@@ -28,16 +28,22 @@ Each generated WAT file includes a full copy of the runtime helper functions (`$
 -   Import these functions in the generated code instead of embedding them.
 -   This would significantly reduce the size of the generated binaries if they were to be distributed or loaded together.
 
-### 3. Efficient String Construction
-Strings are currently constructed character-by-character using `array.new_fixed` with immediate `i32.const` values.
+### 3. Efficient String Construction (Implemented)
+Strings are constructed using `array.new_data` from passive data segments, which is more compact and efficient than the previous character-by-character `array.new_fixed` approach.
 
-**Current:**
+**Old:**
 ```wat
 (array.new_fixed $String 15 (i32.const 91) ... (i32.const 93))
 ```
 
-**Optimization:**
--   For longer strings, use `memory.init` (if copying from a data segment to linear memory) or `array.new_data` (if targeting a Wasm GC version that supports it) to initialize arrays from a passive data segment. This is more compact and faster for initialization.
+**New:**
+```wat
+(data $str_data_0 "hello world")
+...
+(array.new_data $String $str_data_0 (i32.const 0) (i32.const 11))
+```
+
+*Note: Runtime internal strings (like "null") still use the old method and could be updated to use the same mechanism.*
 
 ## Compiler / Code Generation Optimizations
 

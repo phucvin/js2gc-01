@@ -3,6 +3,10 @@ export const globalCallSites: string[] = [];
 export const binaryOpCallSites: string[] = [];
 export const generatedFunctions: string[] = [];
 
+// New string pooling maps
+export const stringMap: Map<string, string> = new Map();
+export const stringDataSegments: string[] = [];
+
 export function getPropertyId(name: string): number {
     if (!propertyMap.has(name)) {
         propertyMap.set(name, propertyMap.size);
@@ -17,6 +21,12 @@ export function resetPropertyMap() {
 export function resetGlobalCallSites() {
     globalCallSites.length = 0;
     binaryOpCallSites.length = 0;
+}
+
+// Reset strings
+export function resetStringMap() {
+    stringMap.clear();
+    stringDataSegments.length = 0;
 }
 
 export function registerGlobalCallSite(): string {
@@ -37,6 +47,25 @@ export function registerGeneratedFunction(code: string) {
 
 export function resetGeneratedFunctions() {
     generatedFunctions.length = 0;
+}
+
+// Register string literal
+export function registerStringLiteral(text: string): string {
+    if (stringMap.has(text)) {
+        return stringMap.get(text)!;
+    }
+    const name = `$str_data_${stringMap.size}`;
+    stringMap.set(text, name);
+    // Escape string for WAT
+    // We can use JSON.stringify to handle escapes, but we need to strip quotes
+    // and make sure it's WAT compatible.
+    // Actually, binaryen parseText supports "..."
+    // But we need to be careful about non-printable chars.
+    // Let's use hex escapes for safety if needed, or just standard JSON escaping.
+    // For now, let's trust JSON.stringify but remove surrounding quotes.
+    const escaped = JSON.stringify(text).slice(1, -1);
+    stringDataSegments.push(`(data ${name} "${escaped}")`);
+    return name;
 }
 
 export interface CompilerOptions {

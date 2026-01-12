@@ -1,5 +1,5 @@
 import ts from 'typescript';
-import { getPropertyId, CompilationContext, registerGlobalCallSite, registerGeneratedFunction, registerBinaryOpCallSite } from './context.ts';
+import { getPropertyId, CompilationContext, registerGlobalCallSite, registerGeneratedFunction, registerBinaryOpCallSite, registerStringLiteral } from './context.ts';
 import { compileBody } from './statement.ts';
 
 let closureCounter = 0;
@@ -196,8 +196,12 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
 
   } else if (ts.isStringLiteral(expr)) {
       const bytes = Buffer.from(expr.text, 'utf8');
-      const byteStr = Array.from(bytes).map(b => `(i32.const ${b})`).join(' ');
-      return fallbackPure(`(array.new_fixed $String ${bytes.length} ${byteStr})`);
+      const len = bytes.length;
+      if (len === 0) {
+        return fallbackPure(`(array.new_fixed $String 0)`);
+      }
+      const segmentName = registerStringLiteral(expr.text);
+      return fallbackPure(`(array.new_data $String ${segmentName} (i32.const 0) (i32.const ${len}))`);
   } else if (expr.kind === ts.SyntaxKind.NullKeyword) {
       return fallbackPure(`(ref.null any)`);
   } else if (expr.kind === ts.SyntaxKind.TrueKeyword) {
