@@ -236,11 +236,9 @@ export function compile(source: string, options?: CompilerOptions): string {
     (i32.const -1)
   )
 
-  (func $get_field_slow (param $obj (ref $Object)) ${enableInlineCache ? '(param $cache (ref $CallSite))' : ''} (param $key i32) (result anyref)
+  (func $get_field_resolve (param $obj (ref $Object)) (param $shape (ref $Shape)) ${enableInlineCache ? '(param $cache (ref $CallSite))' : ''} (param $key i32) (result anyref)
     (local $offset i32)
-    (local $shape (ref $Shape))
 
-    (local.set $shape (struct.get $Object $shape (local.get $obj)))
     (local.set $offset (call $lookup_in_shape (local.get $shape) (local.get $key)))
 
     (if (i32.ge_s (local.get $offset) (i32.const 0))
@@ -255,9 +253,21 @@ export function compile(source: string, options?: CompilerOptions): string {
     (ref.null any)
   )
 
+  (func $get_field_slow (param $obj (ref $Object)) ${enableInlineCache ? '(param $cache (ref $CallSite))' : ''} (param $key i32) (result anyref)
+    (call $get_field_resolve
+        (local.get $obj)
+        (struct.get $Object $shape (local.get $obj))
+        ${enableInlineCache ? '(local.get $cache)' : ''}
+        (local.get $key)
+    )
+  )
+
   ${enableInlineCache ? `(func $get_field_cached (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
+    (local $shape (ref $Shape))
+    (local.set $shape (struct.get $Object $shape (local.get $obj)))
+
     (if (ref.eq
-          (struct.get $Object $shape (local.get $obj))
+          (local.get $shape)
           (struct.get $CallSite $expected_shape (local.get $cache))
         )
       (then
@@ -267,7 +277,7 @@ export function compile(source: string, options?: CompilerOptions): string {
         ))
       )
     )
-    (call $get_field_slow (local.get $obj) (local.get $cache) (local.get $key))
+    (call $get_field_resolve (local.get $obj) (local.get $shape) (local.get $cache) (local.get $key))
   )` : ''}
 
   (func $print_string_helper (param $str (ref $String))
