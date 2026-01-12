@@ -57,7 +57,7 @@ The compiler frequently generates `ref.as_non_null` casts for values that are st
 **Proposed Optimization:**
 If the type of the local or the return type of the function providing the value is already a non-nullable reference (e.g., `(ref $Object)`), the explicit `ref.as_non_null` instruction should be omitted. This reduces code size and validation overhead.
 
-## 3. Redundant Instructions (`drop (ref.null none)`)
+## 3. Redundant Instructions (`drop (ref.null none)`) [Implemented]
 
 **Observation:**
 There are numerous occurrences of `(drop (ref.null none))` in the generated code. This likely results from compilation of statements that don't produce a value (like expression statements) where the compiler pushes a "void" value and then drops it.
@@ -69,8 +69,8 @@ There are numerous occurrences of `(drop (ref.null none))` in the generated code
 )
 ```
 
-**Proposed Optimization:**
-The compiler should be aware of when it is in a "void" context and simply not emit the `ref.null none` followed by `drop`. Alternatively, a peephole optimization pass could remove these sequences.
+**Implementation Status:**
+Implemented optimization in `src/compiler/expression.ts`. The compiler now identifies expression statements where the result is dropped and emits `(nop)` (or simply nothing) instead of `(drop (ref.null any))` or similar redundant sequences for side-effect-free expressions (literals, identifiers, null, this).
 
 ## 4. Unnecessary Locals and `local.set`/`local.get`
 
