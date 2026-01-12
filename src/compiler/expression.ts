@@ -69,7 +69,7 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
         let envAccess;
         if (offset === 0) {
              // We must use ref.as_non_null because local.tee returns the type of the local (nullable).
-             envAccess = `(ref.as_non_null (local.tee ${envLocal} (call $new_object ${envCreationCode} (i32.const ${totalCaptured}) (ref.null any))))`;
+             envAccess = `(ref.as_non_null (local.tee ${envLocal} (call $new_object ${envCreationCode} (i32.const ${totalCaptured}))))`;
         } else {
              envAccess = `(ref.as_non_null (local.get ${envLocal}))`;
         }
@@ -112,21 +112,21 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
 
     let envExpr;
     if (totalCaptured === 0) {
-        envExpr = `(call $new_object ${envCreationCode} (i32.const 0) (ref.null any))`;
+        envExpr = `(call $new_object ${envCreationCode} (i32.const 0))`;
     } else {
         envExpr = `(local.get ${envLocal})`;
     }
 
-    const newProtoObj = `(call $new_object ${shapeCode} (i32.const 0) (ref.null any))`;
+    const newProtoObj = `(call $new_object ${shapeCode} (i32.const 0))`;
 
     const creation = `
         (local.set ${closureLocal}
             (struct.new $Closure
                 ${shapeCode}
                 (array.new_default $Storage (i32.const 0))
-                (ref.null any)
                 (ref.func $${funcName})
                 ${envExpr}
+                (ref.null $Shape)
             )
         )
         (call $put_field (ref.cast (ref $Object) (local.get ${closureLocal})) (i32.const ${protoKeyId}) ${newProtoObj})
@@ -220,7 +220,7 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
 
       const totalProps = propNames.length;
       if (totalProps === 0) {
-          const code = `(call $new_object ${shapeCode} (i32.const 0) (ref.null any))`;
+          const code = `(call $new_object ${shapeCode} (i32.const 0))`;
           return dropResult ? `(drop ${code})` : code;
       }
 
@@ -236,7 +236,7 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
               if (offset === 0) {
                    // We must use ref.as_non_null because local.tee returns the type of the local (nullable),
                    // but set_storage expects a non-nullable reference.
-                   objAccess = `(ref.as_non_null (local.tee ${objLocal} (call $new_object ${shapeCode} (i32.const ${totalProps}) (ref.null any))))`;
+                   objAccess = `(ref.as_non_null (local.tee ${objLocal} (call $new_object ${shapeCode} (i32.const ${totalProps}))))`;
               } else {
                    objAccess = `(ref.as_non_null (local.get ${objLocal}))`;
               }
@@ -259,6 +259,7 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
       const ctorLocal = ctx.getTempLocal('(ref null $Closure)');
       const protoLocal = ctx.getTempLocal('anyref');
       const newObjLocal = ctx.getTempLocal('(ref null $Object)');
+      const shapeLocal = ctx.getTempLocal('(ref null $Shape)');
       const rootShape = registerShape([]);
       const shapeCode = `(global.get ${rootShape})`;
 
@@ -279,7 +280,25 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
       const code = `(block (result anyref)
          (local.set ${ctorLocal} (ref.cast (ref $Closure) ${ctorExpr}))
          (local.set ${protoLocal} ${getProtoCode})
-         (local.set ${newObjLocal} (call $new_object ${shapeCode} (i32.const 0) (local.get ${protoLocal})))
+
+         ;; Optimize: Check if cached shape exists and matches proto
+         (local.set ${shapeLocal} (struct.get $Closure $cached_shape (local.get ${ctorLocal})))
+         (if (ref.is_null (local.get ${shapeLocal}))
+             (then
+                 (local.set ${shapeLocal} (call $new_root_shape_with_proto (local.get ${protoLocal})))
+                 (struct.set $Closure $cached_shape (local.get ${ctorLocal}) (local.get ${shapeLocal}))
+             )
+             (else
+                 (if (i32.eq (ref.eq (ref.cast eqref (struct.get $Shape $proto (ref.as_non_null (local.get ${shapeLocal})))) (ref.cast eqref (local.get ${protoLocal}))) (i32.const 0))
+                    (then
+                         (local.set ${shapeLocal} (call $new_root_shape_with_proto (local.get ${protoLocal})))
+                         (struct.set $Closure $cached_shape (local.get ${ctorLocal}) (local.get ${shapeLocal}))
+                    )
+                 )
+             )
+         )
+
+         (local.set ${newObjLocal} (call $new_object (ref.as_non_null (local.get ${shapeLocal})) (i32.const 0)))
 
          (drop (call_ref ${sigName}
             (struct.get $Closure $env (local.get ${ctorLocal}))

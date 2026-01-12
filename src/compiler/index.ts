@@ -98,6 +98,7 @@ export function compile(source: string, options?: CompilerOptions): string {
       (field $parent (ref null $Shape))
       (field $key i32)
       (field $offset i32)
+      (field $proto (mut anyref))
     ))
 
     (type $Storage (array (mut anyref)))
@@ -105,7 +106,6 @@ export function compile(source: string, options?: CompilerOptions): string {
     (type $Object (sub (struct
       (field $shape (mut (ref $Shape)))
       (field $storage (mut (ref $Storage)))
-      (field $proto (mut anyref))
     )))
 
     ${enableInlineCache ? `(type $CallSite (struct
@@ -116,9 +116,9 @@ export function compile(source: string, options?: CompilerOptions): string {
     (type $Closure (sub $Object (struct
       (field $shape (mut (ref $Shape)))
       (field $storage (mut (ref $Storage)))
-      (field $proto (mut anyref))
       (field $func (ref func))
       (field $env anyref)
+      (field $cached_shape (mut (ref null $Shape)))
     )))
 
     (type $BinaryOpFunc (func (param anyref) (param anyref) (result anyref)))
@@ -156,11 +156,12 @@ export function compile(source: string, options?: CompilerOptions): string {
   )
   (start $runtime_init)
 
-  (func $new_root_shape (result (ref $Shape))
+  (func $new_root_shape_with_proto (param $proto anyref) (result (ref $Shape))
     (struct.new $Shape
       (ref.null $Shape)
       (i32.const -1)
       (i32.const -1)
+      (local.get $proto)
     )
   )
 
@@ -169,14 +170,14 @@ export function compile(source: string, options?: CompilerOptions): string {
       (local.get $parent)
       (local.get $key)
       (local.get $offset)
+      (struct.get $Shape $proto (local.get $parent))
     )
   )
 
-  (func $new_object (param $shape (ref $Shape)) (param $size i32) (param $proto anyref) (result (ref $Object))
+  (func $new_object (param $shape (ref $Shape)) (param $size i32) (result (ref $Object))
     (struct.new $Object
       (local.get $shape)
       (array.new_default $Storage (local.get $size))
-      (local.get $proto)
     )
   )
 
@@ -273,7 +274,7 @@ export function compile(source: string, options?: CompilerOptions): string {
       )
 
       ;; Not found, check proto
-      (local.set $curr (ref.cast (ref null $Object) (struct.get $Object $proto (local.get $curr))))
+      (local.set $curr (ref.cast (ref null $Object) (struct.get $Shape $proto (local.get $curr_shape))))
       (if (ref.is_null (local.get $curr))
         (then (return (ref.null any)))
       )

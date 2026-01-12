@@ -82,14 +82,20 @@ export function registerShape(keys: string[]): string {
     shapeCache.set(keyStr, name);
 
     // Build the nested struct.new chain
-    // Root: (struct.new $Shape (ref.null $Shape) (i32.const -1) (i32.const -1))
-    let shapeCode = `(struct.new $Shape (ref.null $Shape) (i32.const -1) (i32.const -1))`;
+    // Root: (struct.new $Shape (ref.null $Shape) (i32.const -1) (i32.const -1) (global.get $g_str_obj))
+    // We use $g_str_obj just as a placeholder for null? No, we should use a proper null or default proto.
+    // Since this is a global init, we can only use globals.
+    // We will assume Object.prototype ($g_proto_obj) is available as a global?
+    // But $g_proto_obj is created at runtime?
+    // We can use ref.null any. But we need to handle it.
+    let shapeCode = `(struct.new $Shape (ref.null $Shape) (i32.const -1) (i32.const -1) (ref.null any))`;
 
     // Extend for each key
     keys.forEach((key, index) => {
         const id = getPropertyId(key);
-        // $extend_shape logic: (struct.new $Shape parent key offset)
-        shapeCode = `(struct.new $Shape ${shapeCode} (i32.const ${id}) (i32.const ${index}))`;
+        // $extend_shape logic: (struct.new $Shape parent key offset proto)
+        // Since these are object literals, they use the same proto as root (null -> default)
+        shapeCode = `(struct.new $Shape ${shapeCode} (i32.const ${id}) (i32.const ${index}) (ref.null any))`;
     });
 
     // Define the global
