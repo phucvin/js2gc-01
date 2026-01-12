@@ -21,10 +21,11 @@
  (type $17 (func (param (ref $Shape) i32) (result i32)))
  (type $18 (func (param (ref $Object) (ref $CallSite) i32) (result anyref)))
  (type $19 (func (param (ref $String))))
- (type $20 (func (param anyref) (result anyref)))
+ (type $20 (func (param anyref)))
  (type $21 (func (param anyref) (result i32)))
  (type $22 (func (param anyref anyref (ref $BinaryOpCallSite)) (result anyref)))
- (type $23 (func (result anyref)))
+ (type $23 (func (param anyref) (result anyref)))
+ (type $24 (func (result anyref)))
  (import "env" "print_i32" (func $print_i32 (type $11) (param i32)))
  (import "env" "print_f64" (func $print_f64 (type $12) (param f64)))
  (import "env" "print_char" (func $print_char (type $11) (param i32)))
@@ -222,7 +223,7 @@
    )
   )
  )
- (func $console_log (type $20) (param $val anyref) (result anyref)
+ (func $console_log (type $20) (param $val anyref)
   (if
    (ref.is_null
     (local.get $val)
@@ -337,7 +338,6 @@
     )
    )
   )
-  (ref.null none)
  )
  (func $get_type_id (type $21) (param $val anyref) (result i32)
   (if
@@ -586,7 +586,7 @@
    )
   )
  )
- (func $makeAdder (type $20) (param $user_x anyref) (result anyref)
+ (func $makeAdder (type $23) (param $user_x anyref) (result anyref)
   (local $temp_0 (ref null $Object))
   (local.set $temp_0
    (call $new_object
@@ -612,7 +612,7 @@
    )
   )
  )
- (func $main (type $23) (result anyref)
+ (func $main (type $24) (result anyref)
   (local $user_add5 anyref)
   (local $temp_0 (ref null $Closure))
   (local.set $user_add5
@@ -622,35 +622,35 @@
     )
    )
   )
-  (drop
-   (ref.null none)
-  )
-  (call $console_log
-   (block (result anyref)
-    (local.set $temp_0
-     (ref.cast (ref $Closure)
-      (local.get $user_add5)
-     )
-    )
-    (call_ref $ClosureSig1
-     (struct.get $Closure $env
-      (ref.as_non_null
-       (local.get $temp_0)
+  (block (result anyref)
+   (call $console_log
+    (block (result anyref)
+     (local.set $temp_0
+      (ref.cast (ref $Closure)
+       (local.get $user_add5)
       )
      )
-     (ref.null none)
-     (ref.i31
-      (i32.const 10)
-     )
-     (ref.cast (ref $ClosureSig1)
-      (struct.get $Closure $func
+     (call_ref $ClosureSig1
+      (struct.get $Closure $env
        (ref.as_non_null
         (local.get $temp_0)
+       )
+      )
+      (ref.null none)
+      (ref.i31
+       (i32.const 10)
+      )
+      (ref.cast (ref $ClosureSig1)
+       (struct.get $Closure $func
+        (ref.as_non_null
+         (local.get $temp_0)
+        )
        )
       )
      )
     )
    )
+   (ref.null none)
   )
  )
  (func $closure_0 (type $ClosureSig1) (param $env anyref) (param $this anyref) (param $user_y anyref) (result anyref)

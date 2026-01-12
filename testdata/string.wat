@@ -14,7 +14,7 @@
  (type $10 (func (param i32)))
  (type $11 (func (param f64)))
  (type $12 (func (param (ref $String))))
- (type $13 (func (param anyref) (result anyref)))
+ (type $13 (func (param anyref)))
  (type $14 (func (result anyref)))
  (import "env" "print_i32" (func $print_i32 (type $10) (param i32)))
  (import "env" "print_f64" (func $print_f64 (type $11) (param f64)))
@@ -55,7 +55,7 @@
    )
   )
  )
- (func $console_log (type $13) (param $val anyref) (result anyref)
+ (func $console_log (type $13) (param $val anyref)
   (if
    (ref.is_null
     (local.get $val)
@@ -170,7 +170,6 @@
     )
    )
   )
-  (ref.null none)
  )
  (func $main (type $14) (result anyref)
   (call $console_log
@@ -188,5 +187,6 @@
     (i32.const 100)
    )
   )
+  (ref.null none)
  )
 )

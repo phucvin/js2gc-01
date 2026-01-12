@@ -269,7 +269,7 @@ export function compile(source: string, options?: CompilerOptions): string {
     )
   )
 
-  (func $console_log (param $val anyref) (result anyref)
+  (func $console_log (param $val anyref)
     (if (ref.is_null (local.get $val))
       (then
         (call $print_string_helper (array.new_fixed $String 4 (i32.const 110) (i32.const 117) (i32.const 108) (i32.const 108)))
@@ -313,7 +313,6 @@ export function compile(source: string, options?: CompilerOptions): string {
         )
       )
     )
-    (ref.null any)
   )
 
   (func $get_type_id (param $val anyref) (result i32)

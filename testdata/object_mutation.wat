@@ -21,7 +21,7 @@
  (type $17 (func (param (ref $Shape) i32) (result i32)))
  (type $18 (func (param (ref $Object) (ref $CallSite) i32) (result anyref)))
  (type $19 (func (param (ref $String))))
- (type $20 (func (param anyref) (result anyref)))
+ (type $20 (func (param anyref)))
  (type $21 (func (result anyref)))
  (import "env" "print_i32" (func $print_i32 (type $10) (param i32)))
  (import "env" "print_f64" (func $print_f64 (type $11) (param f64)))
@@ -306,7 +306,7 @@
    )
   )
  )
- (func $console_log (type $20) (param $val anyref) (result anyref)
+ (func $console_log (type $20) (param $val anyref)
   (if
    (ref.is_null
     (local.get $val)
@@ -421,7 +421,6 @@
     )
    )
   )
-  (ref.null none)
  )
  (func $main (type $21) (result anyref)
   (local $user_obj anyref)
@@ -452,18 +451,13 @@
     )
    )
   )
-  (drop
-   (ref.null none)
-  )
-  (drop
-   (call $console_log
-    (call $get_field_cached
-     (ref.cast (ref $Object)
-      (local.get $user_obj)
-     )
-     (global.get $site_0)
-     (i32.const 0)
+  (call $console_log
+   (call $get_field_cached
+    (ref.cast (ref $Object)
+     (local.get $user_obj)
     )
+    (global.get $site_0)
+    (i32.const 0)
    )
   )
   (drop
@@ -477,25 +471,26 @@
     )
    )
   )
-  (drop
-   (call $console_log
-    (call $get_field_cached
-     (ref.cast (ref $Object)
-      (local.get $user_obj)
-     )
-     (global.get $site_1)
-     (i32.const 1)
-    )
-   )
-  )
   (call $console_log
    (call $get_field_cached
     (ref.cast (ref $Object)
      (local.get $user_obj)
     )
-    (global.get $site_2)
-    (i32.const 0)
+    (global.get $site_1)
+    (i32.const 1)
    )
+  )
+  (block (result anyref)
+   (call $console_log
+    (call $get_field_cached
+     (ref.cast (ref $Object)
+      (local.get $user_obj)
+     )
+     (global.get $site_2)
+     (i32.const 0)
+    )
+   )
+   (ref.null none)
   )
  )
 )

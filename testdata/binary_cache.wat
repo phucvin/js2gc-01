@@ -15,7 +15,7 @@
  (type $11 (func (param i32)))
  (type $12 (func (param f64)))
  (type $13 (func (param (ref $String))))
- (type $14 (func (param anyref) (result anyref)))
+ (type $14 (func (param anyref)))
  (type $15 (func (param anyref) (result i32)))
  (type $16 (func (param anyref anyref (ref $BinaryOpCallSite)) (result anyref)))
  (type $17 (func (result anyref)))
@@ -89,7 +89,7 @@
    )
   )
  )
- (func $console_log (type $14) (param $val anyref) (result anyref)
+ (func $console_log (type $14) (param $val anyref)
   (if
    (ref.is_null
     (local.get $val)
@@ -204,7 +204,6 @@
     )
    )
   )
-  (ref.null none)
  )
  (func $get_type_id (type $15) (param $val anyref) (result i32)
   (if
@@ -511,16 +510,10 @@
     (i32.const 10)
    )
   )
-  (drop
-   (ref.null none)
-  )
   (local.set $user_b
    (ref.i31
     (i32.const 20)
    )
-  )
-  (drop
-   (ref.null none)
   )
   (local.set $user_c
    (call $add_cached
@@ -529,21 +522,13 @@
     (global.get $site_bin_0)
    )
   )
-  (drop
-   (ref.null none)
-  )
-  (drop
-   (call $console_log
-    (local.get $user_c)
-   )
+  (call $console_log
+   (local.get $user_c)
   )
   (local.set $user_d
    (struct.new $BoxedF64
     (f64.const 2.5)
    )
-  )
-  (drop
-   (ref.null none)
   )
   (local.set $user_e
    (call $add_cached
@@ -552,21 +537,13 @@
     (global.get $site_bin_1)
    )
   )
-  (drop
-   (ref.null none)
-  )
-  (drop
-   (call $console_log
-    (local.get $user_e)
-   )
+  (call $console_log
+   (local.get $user_e)
   )
   (local.set $user_f
    (struct.new $BoxedF64
     (f64.const 5.5)
    )
-  )
-  (drop
-   (ref.null none)
   )
   (local.set $user_g
    (call $add_cached
@@ -575,21 +552,13 @@
     (global.get $site_bin_2)
    )
   )
-  (drop
-   (ref.null none)
-  )
-  (drop
-   (call $console_log
-    (local.get $user_g)
-   )
+  (call $console_log
+   (local.get $user_g)
   )
   (local.set $user_h
    (struct.new $BoxedF64
     (f64.const 1.1)
    )
-  )
-  (drop
-   (ref.null none)
   )
   (local.set $user_i
    (call $add_cached
@@ -598,21 +567,13 @@
     (global.get $site_bin_3)
    )
   )
-  (drop
-   (ref.null none)
-  )
-  (drop
-   (call $console_log
-    (local.get $user_i)
-   )
+  (call $console_log
+   (local.get $user_i)
   )
   (local.set $user_sum
    (ref.i31
     (i32.const 0)
    )
-  )
-  (drop
-   (ref.null none)
   )
   (local.set $user_j
    (ref.i31
@@ -666,11 +627,11 @@
     )
    )
   )
-  (drop
+  (block (result nullref)
+   (call $console_log
+    (local.get $user_sum)
+   )
    (ref.null none)
-  )
-  (call $console_log
-   (local.get $user_sum)
   )
  )
 )

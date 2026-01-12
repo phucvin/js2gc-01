@@ -2,11 +2,11 @@ import ts from 'typescript';
 import { compileExpression } from './expression.ts';
 import { CompilationContext } from './context.ts';
 
-export function compileStatement(stmt: ts.Statement, ctx: CompilationContext): string {
+export function compileStatement(stmt: ts.Statement, ctx: CompilationContext, dropResult: boolean = false): string {
     if (ts.isReturnStatement(stmt) && stmt.expression) {
         return `(return ${compileExpression(stmt.expression, ctx)})`;
     } else if (ts.isExpressionStatement(stmt)) {
-        return compileExpression(stmt.expression, ctx);
+        return compileExpression(stmt.expression, ctx, dropResult);
     } else if (ts.isVariableStatement(stmt)) {
         let code = '';
         for (const decl of stmt.declarationList.declarations) {
@@ -23,37 +23,46 @@ export function compileStatement(stmt: ts.Statement, ctx: CompilationContext): s
                 }
             }
         }
-        // Statements in compileBody are expected to leave a value to be dropped or be void.
-        // However, VariableStatement in JS is void.
-        // But our compileBody loop adds (drop) after every statement except the last one.
-        // If we return (local.set ...), it consumes the value.
-        // So we should append (ref.null any) so the loop can drop it.
+
+        if (dropResult) {
+            return code;
+        }
         return code + '(ref.null any)';
     } else if (ts.isIfStatement(stmt)) {
         const cond = compileExpression(stmt.expression, ctx);
-        const thenBody = ts.isBlock(stmt.thenStatement)
-            ? compileBody(stmt.thenStatement, ctx)
-            : compileStatement(stmt.thenStatement, ctx);
 
-        let elseBody = '(ref.null any)';
+        const thenBody = ts.isBlock(stmt.thenStatement)
+            ? compileBody(stmt.thenStatement, ctx, dropResult)
+            : compileStatement(stmt.thenStatement, ctx, dropResult);
+
+        let elseBody = '';
         if (stmt.elseStatement) {
             elseBody = ts.isBlock(stmt.elseStatement)
-                ? compileBody(stmt.elseStatement, ctx)
-                : compileStatement(stmt.elseStatement, ctx);
+                ? compileBody(stmt.elseStatement, ctx, dropResult)
+                : compileStatement(stmt.elseStatement, ctx, dropResult);
+        } else {
+             // If no else, and we expect a value, we must return null
+             if (!dropResult) {
+                 elseBody = '(ref.null any)';
+             } else {
+                 // if dropResult, else body can be empty
+                 elseBody = '(nop)';
+             }
         }
 
-        // We assume condition returns an i31ref (boolean).
-        // If returns value, then/else branches must match.
-        // Since we are in a statement context, usually we drop the result, but compileBody returns the last value.
-        // If this IfStatement is the last statement in a function, it should return a value.
-        // Wasm `if` returns a value if declared.
-        // We will declare it to return `anyref` to be safe and compatible with our function signature.
-
-        return `
-        (if (result anyref) (i31.get_s (ref.cast (ref i31) ${cond}))
-            (then ${thenBody})
-            (else ${elseBody})
-        )`;
+        if (dropResult) {
+            return `
+            (if (i31.get_s (ref.cast (ref i31) ${cond}))
+                (then ${thenBody})
+                (else ${elseBody})
+            )`;
+        } else {
+            return `
+            (if (result anyref) (i31.get_s (ref.cast (ref i31) ${cond}))
+                (then ${thenBody})
+                (else ${elseBody})
+            )`;
+        }
 
     } else if (ts.isForStatement(stmt)) {
         // for (initializer; condition; incrementor) statement
@@ -90,7 +99,8 @@ export function compileStatement(stmt: ts.Statement, ctx: CompilationContext): s
                     }
                  }
             } else {
-                code += compileExpression(stmt.initializer, ctx) + '\n(drop)\n';
+                // Initializer expression, drop result
+                code += compileExpression(stmt.initializer, ctx, true) + '\n';
             }
         }
 
@@ -111,42 +121,59 @@ export function compileStatement(stmt: ts.Statement, ctx: CompilationContext): s
         // Statement can be Block or single statement.
         // If it's a block, compileBody handles it (returns sequence of instructions).
         // If it's a single statement, compileStatement handles it.
-        // But compileStatement returns a string that might produce a value (ExpressionStatement).
-        // We need to drop the value if it produces one.
+        // We always want to drop the result of the body in a loop (statement context).
         if (ts.isBlock(stmt.statement)) {
-            // compileBody adds drops internally, but returns result of last statement.
-            // We need to drop the result of the block.
-             code += compileBody(stmt.statement, ctx) + '\n(drop)\n';
+             code += compileBody(stmt.statement, ctx, true) + '\n';
         } else {
-             code += compileStatement(stmt.statement, ctx) + '\n(drop)\n';
+             code += compileStatement(stmt.statement, ctx, true) + '\n';
         }
 
         // Incrementor
         if (stmt.incrementor) {
-            code += compileExpression(stmt.incrementor, ctx) + '\n(drop)\n';
+            code += compileExpression(stmt.incrementor, ctx, true) + '\n';
         }
 
         code += '    (br $continue)\n';
         code += '  )\n'; // End loop
         code += ')\n'; // End block
 
-        // Loop statement itself doesn't return a value in JS (void), so we return (ref.null any)
+        if (dropResult) {
+            return code;
+        }
         return code + '(ref.null any)';
     }
     return '';
 }
 
-export function compileBody(body: ts.Block | undefined, ctx: CompilationContext): string {
-  if (!body) return '(ref.null any)';
+export function compileBody(body: ts.Block | undefined, ctx: CompilationContext, dropResult: boolean = false): string {
+  if (!body) {
+      return dropResult ? '' : '(ref.null any)';
+  }
 
-  const statements = body.statements.map(stmt => compileStatement(stmt, ctx)).filter(s => s !== '');
-  if (statements.length === 0) return '(ref.null any)';
+  // Filter out empty statements but we can't filter compiled strings directly as we need index
+  const statements = body.statements;
+
+  if (statements.length === 0) {
+      return dropResult ? '' : '(ref.null any)';
+  }
 
   let code = '';
-  for (let i = 0; i < statements.length - 1; i++) {
-      code += statements[i] + '\n(drop)\n';
+  for (let i = 0; i < statements.length; i++) {
+      const isLast = i === statements.length - 1;
+      // If it's the last statement, we respect dropResult.
+      // If it's not the last, we always drop (dropResult=true).
+      const shouldDrop = isLast ? dropResult : true;
+
+      const stmtCode = compileStatement(statements[i], ctx, shouldDrop);
+      if (stmtCode !== '') {
+          code += stmtCode + '\n';
+      }
   }
-  code += statements[statements.length - 1];
+
+  // If code is empty and we expect a value, return null
+  if (code === '' && !dropResult) {
+      return '(ref.null any)';
+  }
 
   return code;
 }

@@ -14,7 +14,7 @@
  (type $10 (func (param i32)))
  (type $11 (func (param f64)))
  (type $12 (func (param (ref $String))))
- (type $13 (func (param anyref) (result anyref)))
+ (type $13 (func (param anyref)))
  (type $14 (func (param anyref) (result i32)))
  (type $15 (func (param anyref anyref (ref $BinaryOpCallSite)) (result anyref)))
  (type $16 (func (result anyref)))
@@ -63,7 +63,7 @@
    )
   )
  )
- (func $console_log (type $13) (param $val anyref) (result anyref)
+ (func $console_log (type $13) (param $val anyref)
   (if
    (ref.is_null
     (local.get $val)
@@ -178,7 +178,6 @@
     )
    )
   )
-  (ref.null none)
  )
  (func $get_type_id (type $14) (param $val anyref) (result i32)
   (if
@@ -443,5 +442,6 @@
     (global.get $site_bin_0)
    )
   )
+  (ref.null none)
  )
 )

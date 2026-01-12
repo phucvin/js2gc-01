@@ -54,15 +54,6 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
         if (lookup.type === 'local') {
             valCode = `(local.get ${varName})`;
         } else if (lookup.type === 'captured') {
-             // Access captured variable from current environment
-             // We can respect options here too, but captured vars are internal implementation details mostly.
-             // However, get_field_slow vs cached could be relevant.
-             // But for captured vars, we know the shape is immutable/fixed for closures? No, closures use $Object.
-             // But the environment object shape is constructed right there.
-             // The environment object IS an $Object.
-             // Is it worth optimizing env access? Probably yes.
-             // If options.enableInlineCache is false, we should use slow path.
-
              const options = ctx.getOptions();
              const keyId = getPropertyId(varName);
 
@@ -116,7 +107,33 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
     )`;
 }
 
-export function compileExpression(expr: ts.Expression, ctx: CompilationContext): string {
+export function compileExpression(expr: ts.Expression, ctx: CompilationContext, dropResult: boolean = false): string {
+    // Handle console.log specifically to support void return
+    if (ts.isCallExpression(expr) &&
+        ts.isPropertyAccessExpression(expr.expression) &&
+        ts.isIdentifier(expr.expression.expression) &&
+        expr.expression.expression.text === 'console' &&
+        expr.expression.name.text === 'log') {
+
+        if (expr.arguments.length > 0) {
+            const arg = compileExpression(expr.arguments[0], ctx);
+            const callCode = `(call $console_log ${arg})`;
+            if (dropResult) return callCode;
+            return `(block (result anyref) ${callCode} (ref.null any))`;
+        } else {
+            if (dropResult) return `(nop)`;
+            return `(ref.null any)`;
+        }
+    }
+
+    const code = compileExpressionValue(expr, ctx);
+    if (dropResult) {
+        return `(drop ${code})`;
+    }
+    return code;
+}
+
+function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext): string {
   const options = ctx.getOptions();
   const enableIC = options.enableInlineCache !== false;
 
@@ -195,16 +212,6 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext):
                )`;
           } else {
              return `(call $${funcName} ${expr.arguments.map(a => compileExpression(a, ctx)).join(' ')})`;
-          }
-      } else if (ts.isPropertyAccessExpression(expr.expression) &&
-                 ts.isIdentifier(expr.expression.expression) &&
-                 expr.expression.expression.text === 'console' &&
-                 expr.expression.name.text === 'log') {
-          if (expr.arguments.length > 0) {
-              const arg = compileExpression(expr.arguments[0], ctx);
-              return `(call $console_log ${arg})`;
-          } else {
-              return `(ref.null any)`;
           }
       } else if (ts.isPropertyAccessExpression(expr.expression) && ts.isIdentifier(expr.expression.name)) {
           // Method call obj.method(...)
