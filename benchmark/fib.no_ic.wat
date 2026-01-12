@@ -6,22 +6,23 @@
   (type $Closure (struct (field $func funcref) (field $env anyref)))
   (type $BinaryOpFunc (func (param anyref anyref) (result anyref)))
  )
- (type $ClosureSig0 (func (param anyref) (result anyref)))
- (type $ClosureSig1 (func (param anyref anyref) (result anyref)))
+ (type $ClosureSig0 (func (param anyref anyref) (result anyref)))
  (type $BoxedF64 (struct (field f64)))
  (type $BoxedI32 (struct (field i32)))
  (type $String (array (mut i8)))
- (type $10 (func (param i32)))
- (type $11 (func (param f64)))
- (type $12 (func (param (ref $String))))
+ (type $9 (func (param i32)))
+ (type $10 (func (param f64)))
+ (type $11 (func (param (ref $String))))
+ (type $12 (func (param anyref)))
  (type $13 (func (param anyref) (result i32)))
- (type $14 (func (result anyref)))
- (import "env" "print_i32" (func $print_i32 (type $10) (param i32)))
- (import "env" "print_f64" (func $print_f64 (type $11) (param f64)))
- (import "env" "print_char" (func $print_char (type $10) (param i32)))
+ (type $14 (func (param anyref) (result anyref)))
+ (type $15 (func (result anyref)))
+ (import "env" "print_i32" (func $print_i32 (type $9) (param i32)))
+ (import "env" "print_f64" (func $print_f64 (type $10) (param f64)))
+ (import "env" "print_char" (func $print_char (type $9) (param i32)))
  (elem declare func $add_f64_f64 $add_f64_i32 $add_i32_f64 $add_i32_i32 $add_unsupported $sub_f64_f64 $sub_f64_i32 $sub_i32_f64 $sub_i32_i32 $sub_unsupported)
  (export "main" (func $main))
- (func $print_string_helper (type $12) (param $str (ref $String))
+ (func $print_string_helper (type $11) (param $str (ref $String))
   (local $len i32)
   (local $i i32)
   (local.set $len
@@ -56,7 +57,7 @@
    )
   )
  )
- (func $console_log (type $ClosureSig0) (param $val anyref) (result anyref)
+ (func $console_log (type $12) (param $val anyref)
   (if
    (ref.is_null
     (local.get $val)
@@ -171,7 +172,6 @@
     )
    )
   )
-  (ref.null none)
  )
  (func $get_type_id (type $13) (param $val anyref) (result i32)
   (if
@@ -277,7 +277,7 @@
  (func $add_unsupported (type $BinaryOpFunc) (param $0 anyref) (param $1 anyref) (result anyref)
   (ref.null none)
  )
- (func $add_slow (type $ClosureSig1) (param $lhs anyref) (param $rhs anyref) (result anyref)
+ (func $add_slow (type $ClosureSig0) (param $lhs anyref) (param $rhs anyref) (result anyref)
   (local $t_lhs i32)
   (local $t_rhs i32)
   (local $target (ref null $BinaryOpFunc))
@@ -439,7 +439,7 @@
  (func $sub_unsupported (type $BinaryOpFunc) (param $0 anyref) (param $1 anyref) (result anyref)
   (ref.null none)
  )
- (func $sub_slow (type $ClosureSig1) (param $lhs anyref) (param $rhs anyref) (result anyref)
+ (func $sub_slow (type $ClosureSig0) (param $lhs anyref) (param $rhs anyref) (result anyref)
   (local $t_lhs i32)
   (local $t_rhs i32)
   (local $target (ref null $BinaryOpFunc))
@@ -530,7 +530,7 @@
    )
   )
  )
- (func $less_than (type $ClosureSig1) (param $lhs anyref) (param $rhs anyref) (result anyref)
+ (func $less_than (type $ClosureSig0) (param $lhs anyref) (param $rhs anyref) (result anyref)
   (if (result anyref)
    (ref.test (ref i31)
     (local.get $lhs)
@@ -570,27 +570,25 @@
    )
   )
  )
- (func $fib (type $ClosureSig0) (param $user_n anyref) (result anyref)
-  (drop
-   (if (result nullref)
-    (i31.get_s
-     (ref.cast (ref i31)
-      (call $less_than
-       (local.get $user_n)
-       (ref.i31
-        (i32.const 2)
-       )
+ (func $fib (type $14) (param $user_n anyref) (result anyref)
+  (if
+   (i31.get_s
+    (ref.cast (ref i31)
+     (call $less_than
+      (local.get $user_n)
+      (ref.i31
+       (i32.const 2)
       )
      )
     )
-    (then
-     (return
-      (local.get $user_n)
-     )
+   )
+   (then
+    (return
+     (local.get $user_n)
     )
-    (else
-     (ref.null none)
-    )
+   )
+   (else
+    (nop)
    )
   )
   (call $add_slow
@@ -612,7 +610,7 @@
    )
   )
  )
- (func $main (type $14) (result anyref)
+ (func $main (type $15) (result anyref)
   (call $console_log
    (call $fib
     (ref.i31
@@ -620,5 +618,6 @@
     )
    )
   )
+  (ref.null none)
  )
 )
