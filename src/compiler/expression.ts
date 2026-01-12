@@ -145,6 +145,8 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
   // For expressions that don't support optimized dropResult handling, we fall back to manual drop.
   // Helper to handle fallback
   const fallback = (code: string) => dropResult ? `(drop ${code})` : code;
+  // Fallback for side-effect free expressions
+  const fallbackPure = (code: string) => dropResult ? `(nop)` : code;
 
   if (ts.isNumericLiteral(expr)) {
       const val = Number(expr.text);
@@ -161,13 +163,18 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
       } else {
           code = `(struct.new $BoxedF64 (f64.const ${expr.text}))`;
       }
-      return dropResult ? `(drop ${code})` : code; // Literals have side effects? No. So technically (nop) if purely literal, but we drop for safety/validation.
-      // Actually pure literal could be optimized away, but let's stick to simple drop.
+      return fallbackPure(code);
 
   } else if (ts.isStringLiteral(expr)) {
       const bytes = Buffer.from(expr.text, 'utf8');
       const byteStr = Array.from(bytes).map(b => `(i32.const ${b})`).join(' ');
-      return dropResult ? `(drop (array.new_fixed $String ${bytes.length} ${byteStr}))` : `(array.new_fixed $String ${bytes.length} ${byteStr})`;
+      return fallbackPure(`(array.new_fixed $String ${bytes.length} ${byteStr})`);
+  } else if (expr.kind === ts.SyntaxKind.NullKeyword) {
+      return fallbackPure(`(ref.null any)`);
+  } else if (expr.kind === ts.SyntaxKind.TrueKeyword) {
+      return fallbackPure(`(ref.i31 (i32.const 1))`);
+  } else if (expr.kind === ts.SyntaxKind.FalseKeyword) {
+      return fallbackPure(`(ref.i31 (i32.const 0))`);
   } else if (ts.isObjectLiteralExpression(expr)) {
       let shapeCode = `(call $new_root_shape)`;
       let offset = 0;
@@ -436,7 +443,7 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
       const res = ctx.lookup(localName);
 
       if (res.type === 'local') {
-          return fallback(`(local.get ${localName})`);
+          return fallbackPure(`(local.get ${localName})`);
       } else if (res.type === 'captured') {
           const keyId = getPropertyId(localName);
           let code;
@@ -452,12 +459,15 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
       throw new Error(`Unknown identifier: ${varName}`);
   } else if (ts.isArrowFunction(expr) || ts.isFunctionExpression(expr)) {
       const code = compileFunctionExpression(expr, ctx);
-      return fallback(code);
+      return fallbackPure(code); // Function creation is technically pure-ish if not assigned?
+      // Wait, it creates a closure object on heap. That has side effects (allocation).
+      // But if we drop it, we don't care. It's not observable.
+      // So fallbackPure is okay.
   } else if (expr.kind === ts.SyntaxKind.ThisKeyword) {
       try {
           const res = ctx.lookup('$this');
           if (res.type === 'local') {
-              return fallback(`(local.get $this)`);
+              return fallbackPure(`(local.get $this)`);
           } else if (res.type === 'captured') {
                const keyId = getPropertyId('$this');
                let code;
@@ -470,9 +480,9 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
                return fallback(code);
           }
       } catch (e) {
-          return fallback(`(ref.null any)`);
+          return fallbackPure(`(ref.null any)`);
       }
-      return fallback(`(ref.null any)`);
+      return fallbackPure(`(ref.null any)`);
   }
 
   throw new Error(`Unsupported expression kind: ${ts.SyntaxKind[expr.kind]}`);
