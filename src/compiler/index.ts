@@ -107,7 +107,7 @@ export function compile(source: string, options?: CompilerOptions): string {
     ))` : ''}
 
     (type $Closure (struct
-      (field $func funcref)
+      (field $func (ref func))
       (field $env anyref)
     ))
 

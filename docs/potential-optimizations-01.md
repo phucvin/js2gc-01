@@ -104,6 +104,9 @@ Deep property access involves multiple function calls.
 **Observation:**
 Structures like `$Closure` use nullable fields (`funcref`) even when they are always populated.
 
+**Status:**
+Implemented. `$Closure` now uses `(ref func)`.
+
 **Optimization:**
 -   Use `(ref func)` or specific function types in struct definitions to avoid runtime null checks.
 
