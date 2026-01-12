@@ -547,9 +547,9 @@
   )
  )
  (func $add_cached (type $22) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
-  (if (result anyref)
-   (i32.and
-    (i32.eq
+  (block $slow
+   (br_if $slow
+    (i32.ne
      (call $get_type_id
       (local.get $lhs)
      )
@@ -557,7 +557,9 @@
       (local.get $cache)
      )
     )
-    (i32.eq
+   )
+   (br_if $slow
+    (i32.ne
      (call $get_type_id
       (local.get $rhs)
      )
@@ -566,7 +568,7 @@
      )
     )
    )
-   (then
+   (return
     (call_ref $BinaryOpFunc
      (local.get $lhs)
      (local.get $rhs)
@@ -577,13 +579,11 @@
      )
     )
    )
-   (else
-    (call $add_slow
-     (local.get $lhs)
-     (local.get $rhs)
-     (local.get $cache)
-    )
-   )
+  )
+  (call $add_slow
+   (local.get $lhs)
+   (local.get $rhs)
+   (local.get $cache)
   )
  )
  (func $makeAdder (type $23) (param $user_x anyref) (result anyref)

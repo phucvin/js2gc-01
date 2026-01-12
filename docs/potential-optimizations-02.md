@@ -2,39 +2,21 @@
 
 Following an analysis of the generated WAT files in `testdata/`, several specific areas for optimization have been identified. These focus on code efficiency, size reduction, and runtime performance.
 
-## 1. Short-Circuiting Logic in Inline Caches
+## 1. Short-Circuiting Logic in Inline Caches [Implemented]
 
-**Observation:**
-The current implementation of inline caches (e.g., `$add_cached`, `$get_field_cached`) uses `i32.and` to combine type checks. In WebAssembly, `i32.and` is a bitwise operator and evaluates both operands eagerly. This means that even if the first check fails, the second check (and any associated side effects or costs, though minimal here) is still performed.
+**Status:** Implemented
+**Update:** The compiler now uses `br_if` logic within a `block` to implement short-circuiting in `$add_cached` and `$sub_cached`. This provides a cleaner control flow structure than nested `if` blocks.
 
-**Example (`add.wat`):**
-```wat
-(func $add_cached ...
-  (if (result anyref)
-   (i32.and
-    (i32.eq (call $get_type_id (local.get $lhs)) ...)
-    (i32.eq (call $get_type_id (local.get $rhs)) ...)
-   )
-   (then ...)
-   (else ...)
-  )
-)
-```
-
-**Proposed Optimization:**
-Replace bitwise `i32.and` with nested `if` blocks or a sequence of `br_if` instructions to implementing short-circuiting. This avoids the second type check if the first one fails.
+**Observation (Original):**
+The current implementation of inline caches (e.g., `$add_cached`, `$get_field_cached`) uses `i32.and` to combine type checks. In WebAssembly, `i32.and` is a bitwise operator and evaluates both operands eagerly.
 
 **Optimized Pattern:**
 ```wat
-(block $slow_path
-  (block $fast_path
-    (br_if $slow_path (i32.ne (call $get_type_id (local.get $lhs)) ...))
-    (br_if $slow_path (i32.ne (call $get_type_id (local.get $rhs)) ...))
-    ;; Fast path code
-    (return (call_ref $BinaryOpFunc ...))
-  )
+(block $slow
+  (br_if $slow (i32.ne (call $get_type_id (local.get $lhs)) ...))
+  (br_if $slow (i32.ne (call $get_type_id (local.get $rhs)) ...))
+  (return (call_ref $BinaryOpFunc ...))
 )
-;; Slow path code
 (call $add_slow ...)
 ```
 
@@ -64,16 +46,6 @@ If the type of the local or the return type of the function providing the value 
 
 **Observation (Original):**
 There are numerous occurrences of `(drop (ref.null none))` in the generated code. This likely results from compilation of statements that don't produce a value (like expression statements) where the compiler pushes a "void" value and then drops it.
-
-**Example (`add.wat`):**
-```wat
-(drop
- (ref.null none)
-)
-```
-
-**Implementation Status:**
-Implemented optimization in `src/compiler/expression.ts`. The compiler now identifies expression statements where the result is dropped and emits `(nop)` (or simply nothing) instead of `(drop (ref.null any))` or similar redundant sequences for side-effect-free expressions (literals, identifiers, null, this).
 
 ## 4. Unnecessary Locals and `local.set`/`local.get`
 
