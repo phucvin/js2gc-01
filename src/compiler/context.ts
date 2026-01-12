@@ -101,6 +101,7 @@ export function registerShape(keys: string[]): string {
 
 export interface CompilerOptions {
     enableInlineCache?: boolean;
+    enableStringRef?: boolean;
 }
 
 export class CompilationContext {

@@ -69,7 +69,7 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
         let envAccess;
         if (offset === 0) {
              // We must use ref.as_non_null because local.tee returns the type of the local (nullable).
-             envAccess = `(ref.as_non_null (local.tee ${envLocal} (call $new_object ${envCreationCode} (i32.const ${totalCaptured}))))`;
+             envAccess = `(ref.as_non_null (local.tee ${envLocal} (call $new_object ${envCreationCode} (i32.const ${totalCaptured}) (ref.null any))))`;
         } else {
              envAccess = `(ref.as_non_null (local.get ${envLocal}))`;
         }
@@ -105,13 +105,41 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
     registerGeneratedFunction(funcWat);
     registerGeneratedFunction(`(elem declare func $${funcName})`);
 
+    const rootShape = registerShape([]);
+    const shapeCode = `(global.get ${rootShape})`;
+    const protoKeyId = getPropertyId('prototype');
+    const closureLocal = ctx.getTempLocal('(ref null $Closure)');
+
+    let envExpr;
     if (totalCaptured === 0) {
-        return `(struct.new $Closure (ref.func $${funcName}) (call $new_object ${envCreationCode} (i32.const 0)))`;
+        envExpr = `(call $new_object ${envCreationCode} (i32.const 0) (ref.null any))`;
+    } else {
+        envExpr = `(local.get ${envLocal})`;
+    }
+
+    const newProtoObj = `(call $new_object ${shapeCode} (i32.const 0) (ref.null any))`;
+
+    const creation = `
+        (local.set ${closureLocal}
+            (struct.new $Closure
+                ${shapeCode}
+                (array.new_default $Storage (i32.const 0))
+                (ref.null any)
+                (ref.func $${funcName})
+                ${envExpr}
+            )
+        )
+        (call $put_field (ref.cast (ref $Object) (local.get ${closureLocal})) (i32.const ${protoKeyId}) ${newProtoObj})
+        (ref.as_non_null (local.get ${closureLocal}))
+    `;
+
+    if (totalCaptured === 0) {
+        return `(block (result (ref $Closure)) ${creation})`;
     }
 
     return `(block (result (ref $Closure))
         ${envSetupCode}
-        (struct.new $Closure (ref.func $${funcName}) (local.get ${envLocal}))
+        ${creation}
     )`;
 }
 
@@ -192,7 +220,7 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
 
       const totalProps = propNames.length;
       if (totalProps === 0) {
-          const code = `(call $new_object ${shapeCode} (i32.const 0))`;
+          const code = `(call $new_object ${shapeCode} (i32.const 0) (ref.null any))`;
           return dropResult ? `(drop ${code})` : code;
       }
 
@@ -208,7 +236,7 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
               if (offset === 0) {
                    // We must use ref.as_non_null because local.tee returns the type of the local (nullable),
                    // but set_storage expects a non-nullable reference.
-                   objAccess = `(ref.as_non_null (local.tee ${objLocal} (call $new_object ${shapeCode} (i32.const ${totalProps}))))`;
+                   objAccess = `(ref.as_non_null (local.tee ${objLocal} (call $new_object ${shapeCode} (i32.const ${totalProps}) (ref.null any))))`;
               } else {
                    objAccess = `(ref.as_non_null (local.get ${objLocal}))`;
               }
@@ -224,6 +252,45 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
       )`;
       return dropResult ? `(drop ${code})` : code;
 
+  } else if (ts.isNewExpression(expr)) {
+      const ctorExpr = compileExpression(expr.expression, ctx);
+      const args = expr.arguments ? expr.arguments.map(arg => compileExpression(arg, ctx)) : [];
+
+      const ctorLocal = ctx.getTempLocal('(ref null $Closure)');
+      const protoLocal = ctx.getTempLocal('anyref');
+      const newObjLocal = ctx.getTempLocal('(ref null $Object)');
+      const rootShape = registerShape([]);
+      const shapeCode = `(global.get ${rootShape})`;
+
+      const protoKeyId = getPropertyId('prototype');
+
+      let getProtoCode;
+      if (enableIC) {
+           const cacheGlobal = registerGlobalCallSite();
+           getProtoCode = `(call $get_field_cached (ref.cast (ref $Object) (local.get ${ctorLocal})) (global.get ${cacheGlobal}) (i32.const ${protoKeyId}))`;
+      } else {
+           getProtoCode = `(call $get_field_slow (ref.cast (ref $Object) (local.get ${ctorLocal})) (i32.const ${protoKeyId}))`;
+      }
+
+      const sigName = `$ClosureSig${args.length}`;
+      let argsCode = '';
+      args.forEach(arg => argsCode += arg + ' ');
+
+      const code = `(block (result anyref)
+         (local.set ${ctorLocal} (ref.cast (ref $Closure) ${ctorExpr}))
+         (local.set ${protoLocal} ${getProtoCode})
+         (local.set ${newObjLocal} (call $new_object ${shapeCode} (i32.const 0) (local.get ${protoLocal})))
+
+         (drop (call_ref ${sigName}
+            (struct.get $Closure $env (local.get ${ctorLocal}))
+            (local.get ${newObjLocal})
+            ${argsCode}
+            (ref.cast (ref ${sigName}) (struct.get $Closure $func (local.get ${ctorLocal})))
+         ))
+
+         (local.get ${newObjLocal})
+      )`;
+      return fallback(code);
   } else if (ts.isCallExpression(expr)) {
       // Direct console.log is handled in compileExpression wrapper.
       if (ts.isIdentifier(expr.expression)) {
