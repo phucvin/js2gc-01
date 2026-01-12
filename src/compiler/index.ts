@@ -71,12 +71,12 @@ export function compile(source: string, options?: CompilerOptions): string {
 
   // Define some closure types for call_ref
   const closureSigs = `
-  (type $ClosureSig0 (func (param anyref) (result anyref)))
-  (type $ClosureSig1 (func (param anyref) (param anyref) (result anyref)))
-  (type $ClosureSig2 (func (param anyref) (param anyref) (param anyref) (result anyref)))
-  (type $ClosureSig3 (func (param anyref) (param anyref) (param anyref) (param anyref) (result anyref)))
-  (type $ClosureSig4 (func (param anyref) (param anyref) (param anyref) (param anyref) (param anyref) (result anyref)))
-  (type $ClosureSig5 (func (param anyref) (param anyref) (param anyref) (param anyref) (param anyref) (param anyref) (result anyref)))
+  (type $ClosureSig0 (func (param anyref) (param anyref) (result anyref)))
+  (type $ClosureSig1 (func (param anyref) (param anyref) (param anyref) (result anyref)))
+  (type $ClosureSig2 (func (param anyref) (param anyref) (param anyref) (param anyref) (result anyref)))
+  (type $ClosureSig3 (func (param anyref) (param anyref) (param anyref) (param anyref) (param anyref) (result anyref)))
+  (type $ClosureSig4 (func (param anyref) (param anyref) (param anyref) (param anyref) (param anyref) (param anyref) (result anyref)))
+  (type $ClosureSig5 (func (param anyref) (param anyref) (param anyref) (param anyref) (param anyref) (param anyref) (param anyref) (result anyref)))
   `;
 
   const wat = `(module
