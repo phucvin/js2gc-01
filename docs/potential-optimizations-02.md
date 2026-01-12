@@ -59,7 +59,10 @@ If the type of the local or the return type of the function providing the value 
 
 ## 3. Redundant Instructions (`drop (ref.null none)`)
 
-**Observation:**
+**Status:** Partially Implemented / Mitigated
+**Update:** The compiler now propagates a `dropResult` flag to expressions and statements. Void-returning functions like `console.log` and control flow structures like `if` now generate appropriate void-typed Wasm instructions when their result is not used, avoiding the generation of `(ref.null none)` followed by `drop`. However, some fallback cases or implicit returns might still trigger this pattern.
+
+**Observation (Original):**
 There are numerous occurrences of `(drop (ref.null none))` in the generated code. This likely results from compilation of statements that don't produce a value (like expression statements) where the compiler pushes a "void" value and then drops it.
 
 **Example (`add.wat`):**
