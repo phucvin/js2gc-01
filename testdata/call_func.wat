@@ -76,83 +76,41 @@
   )
  )
  (func $console_log (type $14) (param $val anyref)
-  (if
-   (ref.is_null
-    (local.get $val)
-   )
-   (then
-    (call $print_string_helper
-     (ref.as_non_null
-      (global.get $g_str_null)
-     )
-    )
-    (call $print_char
-     (i32.const 10)
+  (block $null
+   (drop
+    (br_on_null $null
+     (local.get $val)
     )
    )
-   (else
-    (if
-     (ref.test (ref i31)
-      (local.get $val)
-     )
-     (then
+   (call $print_i32
+    (i31.get_s
+     (block $i31 (result (ref i31))
       (call $print_i32
-       (i31.get_s
-        (ref.cast (ref i31)
-         (local.get $val)
-        )
-       )
-      )
-     )
-     (else
-      (if
-       (ref.test (ref $BoxedI32)
-        (local.get $val)
-       )
-       (then
-        (call $print_i32
-         (struct.get $BoxedI32 0
-          (ref.cast (ref $BoxedI32)
-           (local.get $val)
-          )
-         )
-        )
-       )
-       (else
-        (if
-         (ref.test (ref $BoxedF64)
-          (local.get $val)
-         )
-         (then
-          (call $print_f64
-           (struct.get $BoxedF64 0
-            (ref.cast (ref $BoxedF64)
-             (local.get $val)
-            )
-           )
-          )
-         )
-         (else
-          (if
-           (ref.test (ref $String)
-            (local.get $val)
-           )
-           (then
+       (struct.get $BoxedI32 0
+        (block $boxed_i32 (result (ref $BoxedI32))
+         (call $print_f64
+          (struct.get $BoxedF64 0
+           (block $boxed_f64 (result (ref $BoxedF64))
             (call $print_string_helper
-             (ref.cast (ref $String)
-              (local.get $val)
-             )
-            )
-            (call $print_char
-             (i32.const 10)
-            )
-           )
-           (else
-            (if
-             (ref.test (ref $Object)
-              (local.get $val)
-             )
-             (then
+             (block $string (result (ref $String))
+              (drop
+               (block $object (result (ref $Object))
+                (drop
+                 (br_on_cast $object anyref (ref $Object)
+                  (br_on_cast $string anyref (ref $String)
+                   (br_on_cast $boxed_f64 anyref (ref $BoxedF64)
+                    (br_on_cast $boxed_i32 anyref (ref $BoxedI32)
+                     (br_on_cast $i31 anyref (ref i31)
+                      (local.get $val)
+                     )
+                    )
+                   )
+                  )
+                 )
+                )
+                (return)
+               )
+              )
               (call $print_string_helper
                (ref.as_non_null
                 (global.get $g_str_obj)
@@ -161,17 +119,33 @@
               (call $print_char
                (i32.const 10)
               )
+              (return)
              )
             )
+            (call $print_char
+             (i32.const 10)
+            )
+            (return)
            )
           )
          )
+         (return)
         )
        )
       )
+      (return)
      )
     )
    )
+   (return)
+  )
+  (call $print_string_helper
+   (ref.as_non_null
+    (global.get $g_str_null)
+   )
+  )
+  (call $print_char
+   (i32.const 10)
   )
  )
  (func $other (type $15) (result anyref)
