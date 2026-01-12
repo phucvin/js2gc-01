@@ -99,6 +99,7 @@ export function compile(source: string, options?: CompilerOptions): string {
     (type $Object (struct
       (field $shape (mut (ref $Shape)))
       (field $storage (mut (ref $Storage)))
+      (field $proto (mut anyref))
     ))
 
     ${enableInlineCache ? `(type $CallSite (struct
@@ -162,10 +163,11 @@ export function compile(source: string, options?: CompilerOptions): string {
     )
   )
 
-  (func $new_object (param $shape (ref $Shape)) (param $size i32) (result (ref $Object))
+  (func $new_object (param $shape (ref $Shape)) (param $size i32) (param $proto anyref) (result (ref $Object))
     (struct.new $Object
       (local.get $shape)
       (array.new_default $Storage (local.get $size))
+      (local.get $proto)
     )
   )
 
@@ -238,17 +240,49 @@ export function compile(source: string, options?: CompilerOptions): string {
 
   (func $get_field_resolve (param $obj (ref $Object)) (param $shape (ref $Shape)) ${enableInlineCache ? '(param $cache (ref $CallSite))' : ''} (param $key i32) (result anyref)
     (local $offset i32)
+    (local $curr_obj (ref null $Object))
+    (local $curr_shape (ref null $Shape))
 
-    (local.set $offset (call $lookup_in_shape (local.get $shape) (local.get $key)))
+    (local.set $curr_obj (local.get $obj))
+    (local.set $curr_shape (local.get $shape))
 
-    (if (i32.ge_s (local.get $offset) (i32.const 0))
-      (then
-        ${enableInlineCache ? `
-        (struct.set $CallSite $expected_shape (local.get $cache) (local.get $shape))
-        (struct.set $CallSite $offset (local.get $cache) (local.get $offset))
-        ` : ''}
-        (return (array.get $Storage (struct.get $Object $storage (local.get $obj)) (local.get $offset)))
-      )
+    (loop $search
+       (if (ref.is_null (local.get $curr_obj))
+         (then (return (ref.null any)))
+       )
+
+       (local.set $offset (call $lookup_in_shape (ref.as_non_null (local.get $curr_shape)) (local.get $key)))
+
+       (if (i32.ge_s (local.get $offset) (i32.const 0))
+         (then
+           ${enableInlineCache ? `
+           (if (ref.eq (local.get $curr_obj) (local.get $obj))
+             (then
+               (struct.set $CallSite $expected_shape (local.get $cache) (local.get $curr_shape))
+               (struct.set $CallSite $offset (local.get $cache) (local.get $offset))
+             )
+           )
+           ` : ''}
+           (return (array.get $Storage (struct.get $Object $storage (ref.as_non_null (local.get $curr_obj))) (local.get $offset)))
+         )
+       )
+
+       ;; Move to prototype
+       (block $not_obj (result anyref)
+         (local.set $curr_obj
+             (br_on_cast_fail $not_obj anyref (ref null $Object)
+                 (struct.get $Object $proto (ref.as_non_null (local.get $curr_obj)))
+             )
+         )
+         (if (ref.is_null (local.get $curr_obj))
+             (then (return (ref.null any)))
+         )
+         (local.set $curr_shape (struct.get $Object $shape (ref.as_non_null (local.get $curr_obj))))
+         (br $search)
+       )
+       ;; If cast failed (not an object), treat as null prototype
+       (drop)
+       (return (ref.null any))
     )
     (ref.null any)
   )

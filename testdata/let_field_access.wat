@@ -2,7 +2,7 @@
  (rec
   (type $Shape (struct (field $parent (ref null $Shape)) (field $key i32) (field $offset i32)))
   (type $Storage (array (mut anyref)))
-  (type $Object (struct (field $shape (mut (ref $Shape))) (field $storage (mut (ref $Storage)))))
+  (type $Object (struct (field $shape (mut (ref $Shape))) (field $storage (mut (ref $Storage))) (field $proto (mut anyref))))
   (type $CallSite (struct (field $expected_shape (mut (ref null $Shape))) (field $offset (mut i32))))
   (type $Closure (struct (field $func (ref func)) (field $env anyref)))
   (type $BinaryOpFunc (func (param anyref anyref) (result anyref)))
@@ -16,7 +16,7 @@
  (type $12 (func))
  (type $13 (func (result (ref $Shape))))
  (type $14 (func (param (ref $Shape) i32 i32) (result (ref $Shape))))
- (type $15 (func (param (ref $Shape) i32) (result (ref $Object))))
+ (type $15 (func (param (ref $Shape) i32 anyref) (result (ref $Object))))
  (type $16 (func (param (ref $Object) i32 anyref)))
  (type $17 (func (param (ref $Shape) i32) (result i32)))
  (type $18 (func (param (ref $Object) (ref $Shape) (ref $CallSite) i32) (result anyref)))
@@ -65,12 +65,13 @@
    (local.get $offset)
   )
  )
- (func $new_object (type $15) (param $shape (ref $Shape)) (param $size i32) (result (ref $Object))
+ (func $new_object (type $15) (param $shape (ref $Shape)) (param $size i32) (param $proto anyref) (result (ref $Object))
   (struct.new $Object
    (local.get $shape)
    (array.new_default $Storage
     (local.get $size)
    )
+   (local.get $proto)
   )
  )
  (func $set_storage (type $16) (param $obj (ref $Object)) (param $idx i32) (param $val anyref)
@@ -132,34 +133,100 @@
  )
  (func $get_field_resolve (type $18) (param $obj (ref $Object)) (param $shape (ref $Shape)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
   (local $offset i32)
-  (local.set $offset
-   (call $lookup_in_shape
-    (local.get $shape)
-    (local.get $key)
-   )
+  (local $curr_obj (ref null $Object))
+  (local $curr_shape (ref null $Shape))
+  (local.set $curr_obj
+   (local.get $obj)
   )
-  (if
-   (i32.ge_s
-    (local.get $offset)
-    (i32.const 0)
-   )
-   (then
-    (struct.set $CallSite $expected_shape
-     (local.get $cache)
-     (local.get $shape)
+  (local.set $curr_shape
+   (local.get $shape)
+  )
+  (loop $search
+   (if
+    (ref.is_null
+     (local.get $curr_obj)
     )
-    (struct.set $CallSite $offset
-     (local.get $cache)
-     (local.get $offset)
-    )
-    (return
-     (array.get $Storage
-      (struct.get $Object $storage
-       (local.get $obj)
-      )
-      (local.get $offset)
+    (then
+     (return
+      (ref.null none)
      )
     )
+   )
+   (local.set $offset
+    (call $lookup_in_shape
+     (ref.as_non_null
+      (local.get $curr_shape)
+     )
+     (local.get $key)
+    )
+   )
+   (if
+    (i32.ge_s
+     (local.get $offset)
+     (i32.const 0)
+    )
+    (then
+     (if
+      (ref.eq
+       (local.get $curr_obj)
+       (local.get $obj)
+      )
+      (then
+       (struct.set $CallSite $expected_shape
+        (local.get $cache)
+        (local.get $curr_shape)
+       )
+       (struct.set $CallSite $offset
+        (local.get $cache)
+        (local.get $offset)
+       )
+      )
+     )
+     (return
+      (array.get $Storage
+       (struct.get $Object $storage
+        (ref.as_non_null
+         (local.get $curr_obj)
+        )
+       )
+       (local.get $offset)
+      )
+     )
+    )
+   )
+   (drop
+    (block $not_obj (result anyref)
+     (local.set $curr_obj
+      (br_on_cast_fail $not_obj anyref (ref null $Object)
+       (struct.get $Object $proto
+        (ref.as_non_null
+         (local.get $curr_obj)
+        )
+       )
+      )
+     )
+     (if
+      (ref.is_null
+       (local.get $curr_obj)
+      )
+      (then
+       (return
+        (ref.null none)
+       )
+      )
+     )
+     (local.set $curr_shape
+      (struct.get $Object $shape
+       (ref.as_non_null
+        (local.get $curr_obj)
+       )
+      )
+     )
+     (br $search)
+    )
+   )
+   (return
+    (ref.null none)
    )
   )
   (ref.null none)
@@ -321,6 +388,7 @@
          (i32.const 0)
         )
         (i32.const 1)
+        (ref.null none)
        )
       )
      )

@@ -74,7 +74,7 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
         let envAccess;
         if (offset === 0) {
              // We must use ref.as_non_null because local.tee returns the type of the local (nullable).
-             envAccess = `(ref.as_non_null (local.tee ${envLocal} (call $new_object ${envCreationCode} (i32.const ${totalCaptured}))))`;
+             envAccess = `(ref.as_non_null (local.tee ${envLocal} (call $new_object ${envCreationCode} (i32.const ${totalCaptured}) (ref.null any))))`;
         } else {
              envAccess = `(ref.as_non_null (local.get ${envLocal}))`;
         }
@@ -127,7 +127,7 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
     registerGeneratedFunction(`(elem declare func $${funcName})`);
 
     if (totalCaptured === 0) {
-        return `(struct.new $Closure (ref.func $${funcName}) (call $new_object ${envCreationCode} (i32.const 0)))`;
+        return `(struct.new $Closure (ref.func $${funcName}) (call $new_object ${envCreationCode} (i32.const 0) (ref.null any)))`;
     }
 
     return `(block (result (ref $Closure))
@@ -211,17 +211,24 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
   } else if (ts.isObjectLiteralExpression(expr)) {
       let shapeCode = `(call $new_root_shape)`;
       let offset = 0;
+      let protoCode = `(ref.null any)`;
+
+      // Scan for properties and __proto__
       for (const prop of expr.properties) {
           if (ts.isPropertyAssignment(prop) && prop.name && ts.isIdentifier(prop.name)) {
-              const keyId = getPropertyId(prop.name.text);
-              shapeCode = `(call $extend_shape ${shapeCode} (i32.const ${keyId}) (i32.const ${offset}))`;
-              offset++;
+              if (prop.name.text === '__proto__') {
+                  protoCode = compileExpression(prop.initializer, ctx);
+              } else {
+                  const keyId = getPropertyId(prop.name.text);
+                  shapeCode = `(call $extend_shape ${shapeCode} (i32.const ${keyId}) (i32.const ${offset}))`;
+                  offset++;
+              }
           }
       }
 
       const totalProps = offset;
       if (totalProps === 0) {
-          const code = `(call $new_object ${shapeCode} (i32.const 0))`;
+          const code = `(call $new_object ${shapeCode} (i32.const 0) ${protoCode})`;
           return dropResult ? `(drop ${code})` : code;
       }
 
@@ -231,13 +238,16 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
       offset = 0;
       for (const prop of expr.properties) {
           if (ts.isPropertyAssignment(prop) && prop.name && ts.isIdentifier(prop.name)) {
+              if (prop.name.text === '__proto__') {
+                  continue;
+              }
               const valCode = compileExpression(prop.initializer, ctx);
 
               let objAccess;
               if (offset === 0) {
                    // We must use ref.as_non_null because local.tee returns the type of the local (nullable),
                    // but set_storage expects a non-nullable reference.
-                   objAccess = `(ref.as_non_null (local.tee ${objLocal} (call $new_object ${shapeCode} (i32.const ${totalProps}))))`;
+                   objAccess = `(ref.as_non_null (local.tee ${objLocal} (call $new_object ${shapeCode} (i32.const ${totalProps}) ${protoCode})))`;
               } else {
                    objAccess = `(ref.as_non_null (local.get ${objLocal}))`;
               }
