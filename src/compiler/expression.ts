@@ -126,16 +126,25 @@ export function compileExpression(expr: ts.Expression, ctx: CompilationContext, 
         }
     }
 
-    const code = compileExpressionValue(expr, ctx);
-    if (dropResult) {
-        return `(drop ${code})`;
-    }
+    const code = compileExpressionValue(expr, ctx, dropResult);
+
+    // Check if the expression handler already respected dropResult
+    // We can't easily know if compileExpressionValue returned a dropped value or not,
+    // unless we pass dropResult to it.
+    // I will modify compileExpressionValue to accept dropResult.
+    // But currently compileExpression calls compileExpressionValue then does drop.
+    // If compileExpressionValue handles dropResult, we shouldn't drop again.
+
     return code;
 }
 
-function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext): string {
+function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dropResult: boolean): string {
   const options = ctx.getOptions();
   const enableIC = options.enableInlineCache !== false;
+
+  // For expressions that don't support optimized dropResult handling, we fall back to manual drop.
+  // Helper to handle fallback
+  const fallback = (code: string) => dropResult ? `(drop ${code})` : code;
 
   if (ts.isNumericLiteral(expr)) {
       const val = Number(expr.text);
@@ -144,17 +153,21 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext): s
       const minI32 = -2147483648;
       const maxI32 = 2147483647;
 
+      let code;
       if (Number.isInteger(val) && val >= minI31 && val <= maxI31) {
-           return `(ref.i31 (i32.const ${expr.text}))`;
+           code = `(ref.i31 (i32.const ${expr.text}))`;
       } else if (Number.isInteger(val) && val >= minI32 && val <= maxI32) {
-           return `(struct.new $BoxedI32 (i32.const ${expr.text}))`;
+           code = `(struct.new $BoxedI32 (i32.const ${expr.text}))`;
       } else {
-          return `(struct.new $BoxedF64 (f64.const ${expr.text}))`;
+          code = `(struct.new $BoxedF64 (f64.const ${expr.text}))`;
       }
+      return dropResult ? `(drop ${code})` : code; // Literals have side effects? No. So technically (nop) if purely literal, but we drop for safety/validation.
+      // Actually pure literal could be optimized away, but let's stick to simple drop.
+
   } else if (ts.isStringLiteral(expr)) {
       const bytes = Buffer.from(expr.text, 'utf8');
       const byteStr = Array.from(bytes).map(b => `(i32.const ${b})`).join(' ');
-      return `(array.new_fixed $String ${bytes.length} ${byteStr})`;
+      return dropResult ? `(drop (array.new_fixed $String ${bytes.length} ${byteStr}))` : `(array.new_fixed $String ${bytes.length} ${byteStr})`;
   } else if (ts.isObjectLiteralExpression(expr)) {
       let shapeCode = `(call $new_root_shape)`;
       let offset = 0;
@@ -178,13 +191,15 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext): s
           }
       }
 
-      return `(block (result (ref $Object))
+      const code = `(block (result (ref $Object))
          (local.set ${objLocal} (call $new_object ${shapeCode} (i32.const ${offset})))
          ${setPropsCode}
          (ref.as_non_null (local.get ${objLocal}))
       )`;
+      return dropResult ? `(drop ${code})` : code;
 
   } else if (ts.isCallExpression(expr)) {
+      // Direct console.log is handled in compileExpression wrapper.
       if (ts.isIdentifier(expr.expression)) {
           const funcName = expr.expression.text;
           const lookup = ctx.lookup(`$user_${funcName}`);
@@ -201,7 +216,7 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext): s
                    argsCode += argCode + ' ';
                });
 
-               return `(block (result anyref)
+               const code = `(block (result anyref)
                    (local.set ${closureLocal} (ref.cast (ref $Closure) ${closureExpr}))
                    (call_ref ${sigName}
                        (struct.get $Closure $env (ref.as_non_null (local.get ${closureLocal})))
@@ -210,8 +225,10 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext): s
                        (ref.cast (ref ${sigName}) (struct.get $Closure $func (ref.as_non_null (local.get ${closureLocal}))))
                    )
                )`;
+               return fallback(code);
           } else {
-             return `(call $${funcName} ${expr.arguments.map(a => compileExpression(a, ctx)).join(' ')})`;
+             const code = `(call $${funcName} ${expr.arguments.map(a => compileExpression(a, ctx)).join(' ')})`;
+             return fallback(code);
           }
       } else if (ts.isPropertyAccessExpression(expr.expression) && ts.isIdentifier(expr.expression.name)) {
           // Method call obj.method(...)
@@ -231,11 +248,6 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext): s
                argsCode += argCode + ' ';
           });
 
-          // Logic:
-          // 1. Evaluate obj -> objLocal
-          // 2. Get field propName from objLocal -> closureLocal (cast to closure)
-          // 3. Call closure with objLocal as $this
-
           let getFieldCode = '';
           if (enableIC) {
               const cacheGlobal = registerGlobalCallSite();
@@ -244,7 +256,7 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext): s
               getFieldCode = `(call $get_field_slow (ref.cast (ref $Object) (local.get ${objLocal})) (i32.const ${keyId}))`;
           }
 
-          return `(block (result anyref)
+          const code = `(block (result anyref)
               (local.set ${objLocal} ${objCode})
               (local.set ${closureLocal} (ref.cast (ref $Closure) ${getFieldCode}))
               (call_ref ${sigName}
@@ -254,6 +266,7 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext): s
                   (ref.cast (ref ${sigName}) (struct.get $Closure $func (ref.as_non_null (local.get ${closureLocal}))))
               )
           )`;
+          return fallback(code);
       } else {
           // Indirect call
           const closureExpr = compileExpression(expr.expression, ctx);
@@ -266,7 +279,7 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext): s
                argsCode += argCode + ' ';
           });
 
-          return `(block (result anyref)
+          const code = `(block (result anyref)
               (local.set ${closureLocal} (ref.cast (ref $Closure) ${closureExpr}))
               (call_ref ${sigName}
                    (struct.get $Closure $env (ref.as_non_null (local.get ${closureLocal})))
@@ -275,30 +288,35 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext): s
                    (ref.cast (ref ${sigName}) (struct.get $Closure $func (ref.as_non_null (local.get ${closureLocal}))))
                )
           )`;
+          return fallback(code);
       }
   } else if (ts.isBinaryExpression(expr)) {
       if (expr.operatorToken.kind === ts.SyntaxKind.PlusToken) {
           const left = compileExpression(expr.left, ctx);
           const right = compileExpression(expr.right, ctx);
+          let code;
           if (enableIC) {
               const siteName = registerBinaryOpCallSite();
-              return `(call $add_cached ${left} ${right} (global.get ${siteName}))`;
+              code = `(call $add_cached ${left} ${right} (global.get ${siteName}))`;
           } else {
-              return `(call $add_slow ${left} ${right})`;
+              code = `(call $add_slow ${left} ${right})`;
           }
+          return fallback(code);
       } else if (expr.operatorToken.kind === ts.SyntaxKind.MinusToken) {
           const left = compileExpression(expr.left, ctx);
           const right = compileExpression(expr.right, ctx);
+          let code;
           if (enableIC) {
               const siteName = registerBinaryOpCallSite();
-              return `(call $sub_cached ${left} ${right} (global.get ${siteName}))`;
+              code = `(call $sub_cached ${left} ${right} (global.get ${siteName}))`;
           } else {
-              return `(call $sub_slow ${left} ${right})`;
+              code = `(call $sub_slow ${left} ${right})`;
           }
+          return fallback(code);
       } else if (expr.operatorToken.kind === ts.SyntaxKind.LessThanToken) {
           const left = compileExpression(expr.left, ctx);
           const right = compileExpression(expr.right, ctx);
-          return `(call $less_than ${left} ${right})`;
+          return fallback(`(call $less_than ${left} ${right})`);
       } else if (expr.operatorToken.kind === ts.SyntaxKind.EqualsToken) {
           if (ts.isIdentifier(expr.left)) {
               const varName = expr.left.text;
@@ -312,17 +330,33 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext): s
               const right = compileExpression(expr.right, ctx);
 
               if (res.type === 'local') {
-                   return `(local.tee ${localName} ${right})`;
+                   if (dropResult) {
+                       return `(local.set ${localName} ${right})`;
+                   } else {
+                       return `(local.tee ${localName} ${right})`;
+                   }
               } else {
                    const keyId = getPropertyId(localName);
-                   return `(call $put_field (ref.cast (ref $Object) (local.get $env)) (i32.const ${keyId}) ${right})`;
+
+                   if (dropResult) {
+                       return `(call $put_field (ref.cast (ref $Object) (local.get $env)) (i32.const ${keyId}) ${right})`;
+                   } else {
+                       const temp = ctx.getTempLocal('anyref');
+                       return `(block (result anyref) (call $put_field (ref.cast (ref $Object) (local.get $env)) (i32.const ${keyId}) (local.tee ${temp} ${right})) (local.get ${temp}))`;
+                   }
               }
           } else if (ts.isPropertyAccessExpression(expr.left)) {
               if (ts.isIdentifier(expr.left.name)) {
                   const keyId = getPropertyId(expr.left.name.text);
                   const objCode = compileExpression(expr.left.expression, ctx);
                   const valCode = compileExpression(expr.right, ctx);
-                  return `(call $put_field (ref.cast (ref $Object) ${objCode}) (i32.const ${keyId}) ${valCode})`;
+
+                  if (dropResult) {
+                       return `(call $put_field (ref.cast (ref $Object) ${objCode}) (i32.const ${keyId}) ${valCode})`;
+                  } else {
+                       const temp = ctx.getTempLocal('anyref');
+                       return `(block (result anyref) (call $put_field (ref.cast (ref $Object) ${objCode}) (i32.const ${keyId}) (local.tee ${temp} ${valCode})) (local.get ${temp}))`;
+                  }
               }
           }
       }
@@ -346,19 +380,15 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext): s
                       addCall = `(call $add_slow (local.get ${tempLocal}) (ref.i31 (i32.const 1)))`;
                   }
 
-                  return `(block (result anyref)
+                  const code = `(block (result anyref)
                       (local.set ${tempLocal} (local.get ${localName}))
                       (local.set ${localName} ${addCall})
                       (local.get ${tempLocal})
                   )`;
+                  return fallback(code);
               } else {
                   const tempLocal = ctx.getTempLocal('anyref');
                   const keyId = getPropertyId(localName);
-                  // Captured access also needs to respect IC option?
-                  // Earlier I implemented env access logic in compileFunctionExpression.
-                  // But here it's accessing captured var in PostfixUnary.
-                  // Wait, compileExpression for Identifier handles captured access.
-                  // But PostfixUnary manually generates get/set.
 
                   let envGet;
                   if (enableIC) {
@@ -376,12 +406,13 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext): s
                       addCall = `(call $add_slow (local.get ${tempLocal}) (ref.i31 (i32.const 1)))`;
                   }
 
-                  return `(block (result anyref)
+                  // Removed drop after put_field call since put_field is now void
+                  const code = `(block (result anyref)
                        (local.set ${tempLocal} ${envGet})
                        (call $put_field (ref.cast (ref $Object) (local.get $env)) (i32.const ${keyId}) ${addCall})
-                       (drop)
                        (local.get ${tempLocal})
                   )`;
+                  return fallback(code);
               }
           }
       }
@@ -389,12 +420,14 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext): s
       if (ts.isIdentifier(expr.name)) {
           const keyId = getPropertyId(expr.name.text);
           const objCode = compileExpression(expr.expression, ctx);
+          let code;
           if (enableIC) {
               const cacheGlobal = registerGlobalCallSite();
-              return `(call $get_field_cached (ref.cast (ref $Object) ${objCode}) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
+              code = `(call $get_field_cached (ref.cast (ref $Object) ${objCode}) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
           } else {
-              return `(call $get_field_slow (ref.cast (ref $Object) ${objCode}) (i32.const ${keyId}))`;
+              code = `(call $get_field_slow (ref.cast (ref $Object) ${objCode}) (i32.const ${keyId}))`;
           }
+          return fallback(code);
       }
   } else if (ts.isIdentifier(expr)) {
       const varName = expr.text;
@@ -403,41 +436,43 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext): s
       const res = ctx.lookup(localName);
 
       if (res.type === 'local') {
-          return `(local.get ${localName})`;
+          return fallback(`(local.get ${localName})`);
       } else if (res.type === 'captured') {
           const keyId = getPropertyId(localName);
+          let code;
           if (enableIC) {
               const cacheGlobal = registerGlobalCallSite();
-              return `(call $get_field_cached (ref.cast (ref $Object) (local.get $env)) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
+              code = `(call $get_field_cached (ref.cast (ref $Object) (local.get $env)) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
           } else {
-              return `(call $get_field_slow (ref.cast (ref $Object) (local.get $env)) (i32.const ${keyId}))`;
+              code = `(call $get_field_slow (ref.cast (ref $Object) (local.get $env)) (i32.const ${keyId}))`;
           }
+          return fallback(code);
       }
 
       throw new Error(`Unknown identifier: ${varName}`);
   } else if (ts.isArrowFunction(expr) || ts.isFunctionExpression(expr)) {
-      return compileFunctionExpression(expr, ctx);
+      const code = compileFunctionExpression(expr, ctx);
+      return fallback(code);
   } else if (expr.kind === ts.SyntaxKind.ThisKeyword) {
       try {
           const res = ctx.lookup('$this');
           if (res.type === 'local') {
-              return `(local.get $this)`;
+              return fallback(`(local.get $this)`);
           } else if (res.type === 'captured') {
-               // Captured $this (e.g. inside ArrowFunction)
-               // Access it from env
                const keyId = getPropertyId('$this');
+               let code;
                if (enableIC) {
                    const cacheGlobal = registerGlobalCallSite();
-                   return `(call $get_field_cached (ref.cast (ref $Object) (local.get $env)) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
+                   code = `(call $get_field_cached (ref.cast (ref $Object) (local.get $env)) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
                } else {
-                   return `(call $get_field_slow (ref.cast (ref $Object) (local.get $env)) (i32.const ${keyId}))`;
+                   code = `(call $get_field_slow (ref.cast (ref $Object) (local.get $env)) (i32.const ${keyId}))`;
                }
+               return fallback(code);
           }
       } catch (e) {
-          // If not found (e.g. top level or not available), return null (or global object if we had one)
-          return `(ref.null any)`;
+          return fallback(`(ref.null any)`);
       }
-      return `(ref.null any)`;
+      return fallback(`(ref.null any)`);
   }
 
   throw new Error(`Unsupported expression kind: ${ts.SyntaxKind[expr.kind]}`);

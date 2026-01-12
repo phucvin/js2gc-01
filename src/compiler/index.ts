@@ -158,7 +158,7 @@ export function compile(source: string, options?: CompilerOptions): string {
     )
   )
 
-  (func $put_field (param $obj (ref $Object)) (param $key i32) (param $val anyref) (result anyref)
+  (func $put_field (param $obj (ref $Object)) (param $key i32) (param $val anyref)
     (local $shape (ref $Shape))
     (local $offset i32)
     (local $old_storage (ref $Storage))
@@ -197,7 +197,6 @@ export function compile(source: string, options?: CompilerOptions): string {
         (struct.set $Object $storage (local.get $obj) (local.get $new_storage))
       )
     )
-    (local.get $val)
   )
 
   (func $lookup_in_shape (param $shape (ref $Shape)) (param $key i32) (result i32)

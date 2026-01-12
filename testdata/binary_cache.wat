@@ -597,13 +597,11 @@
        )
       )
      )
-     (drop
-      (local.tee $user_sum
-       (call $add_cached
-        (local.get $user_sum)
-        (local.get $user_j)
-        (global.get $site_bin_4)
-       )
+     (local.set $user_sum
+      (call $add_cached
+       (local.get $user_sum)
+       (local.get $user_j)
+       (global.get $site_bin_4)
       )
      )
      (drop

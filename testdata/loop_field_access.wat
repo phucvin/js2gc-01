@@ -689,19 +689,17 @@
        )
       )
      )
-     (drop
-      (local.tee $user_sum
-       (call $add_cached
-        (local.get $user_sum)
-        (call $get_field_cached
-         (ref.cast (ref $Object)
-          (local.get $user_obj)
-         )
-         (global.get $site_0)
-         (i32.const 0)
+     (local.set $user_sum
+      (call $add_cached
+       (local.get $user_sum)
+       (call $get_field_cached
+        (ref.cast (ref $Object)
+         (local.get $user_obj)
         )
-        (global.get $site_bin_0)
+        (global.get $site_0)
+        (i32.const 0)
        )
+       (global.get $site_bin_0)
       )
      )
      (drop
