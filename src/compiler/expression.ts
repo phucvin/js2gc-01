@@ -111,7 +111,7 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
 
     return `(block (result (ref $Closure))
         ${envSetupCode}
-        (struct.new $Closure (ref.func $${funcName}) (ref.as_non_null (local.get ${envLocal})))
+        (struct.new $Closure (ref.func $${funcName}) (local.get ${envLocal}))
     )`;
 }
 
@@ -247,7 +247,7 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
                        (struct.get $Closure $env (local.tee ${closureLocal} (ref.cast (ref $Closure) ${closureExpr})))
                        (ref.null any) ;; $this for simple function call
                        ${argsCode}
-                       (ref.cast (ref ${sigName}) (struct.get $Closure $func (ref.as_non_null (local.get ${closureLocal}))))
+                       (ref.cast (ref ${sigName}) (struct.get $Closure $func (local.get ${closureLocal})))
                    )
                )`;
                return fallback(code);
@@ -287,7 +287,7 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
                   (struct.get $Closure $env (local.tee ${closureLocal} (ref.cast (ref $Closure) ${getFieldCode})))
                   (local.get ${objLocal}) ;; pass obj as $this
                   ${argsCode}
-                  (ref.cast (ref ${sigName}) (struct.get $Closure $func (ref.as_non_null (local.get ${closureLocal}))))
+                  (ref.cast (ref ${sigName}) (struct.get $Closure $func (local.get ${closureLocal})))
               )
           )`;
           return fallback(code);
@@ -308,7 +308,7 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
                    (struct.get $Closure $env (local.tee ${closureLocal} (ref.cast (ref $Closure) ${closureExpr})))
                    (ref.null any) ;; $this for indirect call
                    ${argsCode}
-                   (ref.cast (ref ${sigName}) (struct.get $Closure $func (ref.as_non_null (local.get ${closureLocal}))))
+                   (ref.cast (ref ${sigName}) (struct.get $Closure $func (local.get ${closureLocal})))
                )
           )`;
           return fallback(code);

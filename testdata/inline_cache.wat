@@ -102,27 +102,21 @@
    (if
     (i32.eq
      (struct.get $Shape $key
-      (ref.as_non_null
-       (local.get $curr)
-      )
+      (local.get $curr)
      )
      (local.get $key)
     )
     (then
      (return
       (struct.get $Shape $offset
-       (ref.as_non_null
-        (local.get $curr)
-       )
+       (local.get $curr)
       )
      )
     )
     (else
      (local.set $curr
       (struct.get $Shape $parent
-       (ref.as_non_null
-        (local.get $curr)
-       )
+       (local.get $curr)
       )
      )
      (br $search)

@@ -232,11 +232,11 @@ export function compile(source: string, options?: CompilerOptions): string {
         (then (return (i32.const -1)))
       )
 
-      (if (i32.eq (struct.get $Shape $key (ref.as_non_null (local.get $curr))) (local.get $key))
-        (then (return (struct.get $Shape $offset (ref.as_non_null (local.get $curr)))))
+      (if (i32.eq (struct.get $Shape $key (local.get $curr)) (local.get $key))
+        (then (return (struct.get $Shape $offset (local.get $curr))))
       )
 
-      (local.set $curr (struct.get $Shape $parent (ref.as_non_null (local.get $curr))))
+      (local.set $curr (struct.get $Shape $parent (local.get $curr)))
       (br $search)
     )
     (i32.const -1)
@@ -421,14 +421,14 @@ export function compile(source: string, options?: CompilerOptions): string {
       (struct.set $BinaryOpCallSite $target (local.get $cache) (local.get $target))
       ` : ''}
 
-      (call_ref $BinaryOpFunc (local.get $lhs) (local.get $rhs) (ref.as_non_null (local.get $target)))
+      (call_ref $BinaryOpFunc (local.get $lhs) (local.get $rhs) (local.get $target))
   )
 
   ${enableInlineCache ? `(func $add_cached (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
       (block $slow
         (br_if $slow (i32.ne (call $get_type_id (local.get $lhs)) (struct.get $BinaryOpCallSite $type_lhs (local.get $cache))))
         (br_if $slow (i32.ne (call $get_type_id (local.get $rhs)) (struct.get $BinaryOpCallSite $type_rhs (local.get $cache))))
-        (return (call_ref $BinaryOpFunc (local.get $lhs) (local.get $rhs) (ref.as_non_null (struct.get $BinaryOpCallSite $target (local.get $cache)))))
+        (return (call_ref $BinaryOpFunc (local.get $lhs) (local.get $rhs) (struct.get $BinaryOpCallSite $target (local.get $cache))))
       )
       (call $add_slow (local.get $lhs) (local.get $rhs) (local.get $cache))
   )` : ''}
@@ -504,14 +504,14 @@ export function compile(source: string, options?: CompilerOptions): string {
       (struct.set $BinaryOpCallSite $target (local.get $cache) (local.get $target))
       ` : ''}
 
-      (call_ref $BinaryOpFunc (local.get $lhs) (local.get $rhs) (ref.as_non_null (local.get $target)))
+      (call_ref $BinaryOpFunc (local.get $lhs) (local.get $rhs) (local.get $target))
   )
 
   ${enableInlineCache ? `(func $sub_cached (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
       (block $slow
         (br_if $slow (i32.ne (call $get_type_id (local.get $lhs)) (struct.get $BinaryOpCallSite $type_lhs (local.get $cache))))
         (br_if $slow (i32.ne (call $get_type_id (local.get $rhs)) (struct.get $BinaryOpCallSite $type_rhs (local.get $cache))))
-        (return (call_ref $BinaryOpFunc (local.get $lhs) (local.get $rhs) (ref.as_non_null (struct.get $BinaryOpCallSite $target (local.get $cache)))))
+        (return (call_ref $BinaryOpFunc (local.get $lhs) (local.get $rhs) (struct.get $BinaryOpCallSite $target (local.get $cache))))
       )
       (call $sub_slow (local.get $lhs) (local.get $rhs) (local.get $cache))
   )` : ''}

@@ -203,27 +203,21 @@
    (if
     (i32.eq
      (struct.get $Shape $key
-      (ref.as_non_null
-       (local.get $curr)
-      )
+      (local.get $curr)
      )
      (local.get $key)
     )
     (then
      (return
       (struct.get $Shape $offset
-       (ref.as_non_null
-        (local.get $curr)
-       )
+       (local.get $curr)
       )
      )
     )
     (else
      (local.set $curr
       (struct.get $Shape $parent
-       (ref.as_non_null
-        (local.get $curr)
-       )
+       (local.get $curr)
       )
      )
      (br $search)
@@ -610,9 +604,7 @@
   (call_ref $BinaryOpFunc
    (local.get $lhs)
    (local.get $rhs)
-   (ref.as_non_null
-    (local.get $target)
-   )
+   (local.get $target)
   )
  )
  (func $add_cached (type $23) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
@@ -641,10 +633,8 @@
     (call_ref $BinaryOpFunc
      (local.get $lhs)
      (local.get $rhs)
-     (ref.as_non_null
-      (struct.get $BinaryOpCallSite $target
-       (local.get $cache)
-      )
+     (struct.get $BinaryOpCallSite $target
+      (local.get $cache)
      )
     )
    )
