@@ -358,9 +358,7 @@
   (call_ref $BinaryOpFunc
    (local.get $lhs)
    (local.get $rhs)
-   (ref.as_non_null
-    (local.get $target)
-   )
+   (local.get $target)
   )
  )
  (func $add_cached (type $16) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
@@ -389,10 +387,8 @@
     (call_ref $BinaryOpFunc
      (local.get $lhs)
      (local.get $rhs)
-     (ref.as_non_null
-      (struct.get $BinaryOpCallSite $target
-       (local.get $cache)
-      )
+     (struct.get $BinaryOpCallSite $target
+      (local.get $cache)
      )
     )
    )

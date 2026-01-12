@@ -127,27 +127,21 @@
    (if
     (i32.eq
      (struct.get $Shape $key
-      (ref.as_non_null
-       (local.get $curr)
-      )
+      (local.get $curr)
      )
      (local.get $key)
     )
     (then
      (return
       (struct.get $Shape $offset
-       (ref.as_non_null
-        (local.get $curr)
-       )
+       (local.get $curr)
       )
      )
     )
     (else
      (local.set $curr
       (struct.get $Shape $parent
-       (ref.as_non_null
-        (local.get $curr)
-       )
+       (local.get $curr)
       )
      )
      (br $search)
@@ -321,9 +315,7 @@
      (ref.null none)
      (ref.cast (ref $ClosureSig0)
       (struct.get $Closure $func
-       (ref.as_non_null
-        (local.get $temp_3)
-       )
+       (local.get $temp_3)
       )
      )
     )
@@ -350,9 +342,7 @@
     )
     (struct.new $Closure
      (ref.func $closure_1)
-     (ref.as_non_null
-      (local.get $temp_4)
-     )
+     (local.get $temp_4)
     )
    )
   )
@@ -369,9 +359,7 @@
      (ref.null none)
      (ref.cast (ref $ClosureSig0)
       (struct.get $Closure $func
-       (ref.as_non_null
-        (local.get $temp_5)
-       )
+       (local.get $temp_5)
       )
      )
     )
@@ -423,9 +411,7 @@
     (local.get $temp_8)
     (ref.cast (ref $ClosureSig0)
      (struct.get $Closure $func
-      (ref.as_non_null
-       (local.get $temp_9)
-      )
+      (local.get $temp_9)
      )
     )
    )

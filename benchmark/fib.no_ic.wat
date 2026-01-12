@@ -340,9 +340,7 @@
   (call_ref $BinaryOpFunc
    (local.get $lhs)
    (local.get $rhs)
-   (ref.as_non_null
-    (local.get $target)
-   )
+   (local.get $target)
   )
  )
  (func $sub_i32_i32 (type $BinaryOpFunc) (param $0 anyref) (param $1 anyref) (result anyref)
@@ -502,9 +500,7 @@
   (call_ref $BinaryOpFunc
    (local.get $lhs)
    (local.get $rhs)
-   (ref.as_non_null
-    (local.get $target)
-   )
+   (local.get $target)
   )
  )
  (func $less_than (type $ClosureSig0) (param $lhs anyref) (param $rhs anyref) (result anyref)
