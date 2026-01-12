@@ -99,6 +99,7 @@ export function compile(source: string, options?: CompilerOptions): string {
     (type $Object (struct
       (field $shape (mut (ref $Shape)))
       (field $storage (mut (ref $Storage)))
+      (field $proto (mut (ref null $Object)))
     ))
 
     ${enableInlineCache ? `(type $CallSite (struct
@@ -140,9 +141,12 @@ export function compile(source: string, options?: CompilerOptions): string {
   (global $g_str_null (mut (ref null $String)) (ref.null $String))
   (global $g_str_obj (mut (ref null $String)) (ref.null $String))
 
+  (global $g_obj_proto (mut (ref null $Object)) (ref.null $Object))
+
   (func $runtime_init
     (global.set $g_str_null (array.new_data $String ${nullData} (i32.const 0) (i32.const 4)))
     (global.set $g_str_obj (array.new_data $String ${objData} (i32.const 0) (i32.const 15)))
+    (global.set $g_obj_proto (call $new_object (call $new_root_shape) (i32.const 0) (ref.null $Object)))
   )
   (start $runtime_init)
 
@@ -162,10 +166,11 @@ export function compile(source: string, options?: CompilerOptions): string {
     )
   )
 
-  (func $new_object (param $shape (ref $Shape)) (param $size i32) (result (ref $Object))
+  (func $new_object (param $shape (ref $Shape)) (param $size i32) (param $proto (ref null $Object)) (result (ref $Object))
     (struct.new $Object
       (local.get $shape)
       (array.new_default $Storage (local.get $size))
+      (local.get $proto)
     )
   )
 
@@ -238,6 +243,7 @@ export function compile(source: string, options?: CompilerOptions): string {
 
   (func $get_field_resolve (param $obj (ref $Object)) (param $shape (ref $Shape)) ${enableInlineCache ? '(param $cache (ref $CallSite))' : ''} (param $key i32) (result anyref)
     (local $offset i32)
+    (local $curr (ref null $Object))
 
     (local.set $offset (call $lookup_in_shape (local.get $shape) (local.get $key)))
 
@@ -250,6 +256,25 @@ export function compile(source: string, options?: CompilerOptions): string {
         (return (array.get $Storage (struct.get $Object $storage (local.get $obj)) (local.get $offset)))
       )
     )
+
+    ;; Walk prototype chain
+    (local.set $curr (struct.get $Object $proto (local.get $obj)))
+    (loop $proto_loop
+       (if (ref.is_null (local.get $curr)) (then (return (ref.null any))))
+
+       (local.set $shape (struct.get $Object $shape (ref.as_non_null (local.get $curr))))
+       (local.set $offset (call $lookup_in_shape (local.get $shape) (local.get $key)))
+
+       (if (i32.ge_s (local.get $offset) (i32.const 0))
+         (then
+            (return (array.get $Storage (struct.get $Object $storage (ref.as_non_null (local.get $curr))) (local.get $offset)))
+         )
+       )
+
+       (local.set $curr (struct.get $Object $proto (ref.as_non_null (local.get $curr))))
+       (br $proto_loop)
+    )
+
     (ref.null any)
   )
 

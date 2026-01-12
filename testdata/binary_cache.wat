@@ -2,7 +2,7 @@
  (rec
   (type $Shape (struct (field $parent (ref null $Shape)) (field $key i32) (field $offset i32)))
   (type $Storage (array (mut anyref)))
-  (type $Object (struct (field $shape (mut (ref $Shape))) (field $storage (mut (ref $Storage)))))
+  (type $Object (struct (field $shape (mut (ref $Shape))) (field $storage (mut (ref $Storage))) (field $proto (mut (ref null $Object)))))
   (type $CallSite (struct (field $expected_shape (mut (ref null $Shape))) (field $offset (mut i32))))
   (type $Closure (struct (field $func (ref func)) (field $env anyref)))
   (type $BinaryOpFunc (func (param anyref anyref) (result anyref)))
@@ -15,11 +15,13 @@
  (type $11 (func (param i32)))
  (type $12 (func (param f64)))
  (type $13 (func))
- (type $14 (func (param (ref $String))))
- (type $15 (func (param anyref)))
- (type $16 (func (param anyref) (result i32)))
- (type $17 (func (param anyref anyref (ref $BinaryOpCallSite)) (result anyref)))
- (type $18 (func (result anyref)))
+ (type $14 (func (result (ref $Shape))))
+ (type $15 (func (param (ref $Shape) i32 (ref null $Object)) (result (ref $Object))))
+ (type $16 (func (param (ref $String))))
+ (type $17 (func (param anyref)))
+ (type $18 (func (param anyref) (result i32)))
+ (type $19 (func (param anyref anyref (ref $BinaryOpCallSite)) (result anyref)))
+ (type $20 (func (result anyref)))
  (import "env" "print_i32" (func $print_i32 (type $11) (param i32)))
  (import "env" "print_f64" (func $print_f64 (type $12) (param f64)))
  (import "env" "print_char" (func $print_char (type $11) (param i32)))
@@ -55,6 +57,7 @@
  ))
  (global $g_str_null (mut (ref null $String)) (ref.null none))
  (global $g_str_obj (mut (ref null $String)) (ref.null none))
+ (global $g_obj_proto (mut (ref null $Object)) (ref.null none))
  (data $str_data_0 "null")
  (data $str_data_1 "[object Object]")
  (elem declare func $add_f64_f64 $add_f64_i32 $add_i32_f64 $add_i32_i32 $add_unsupported)
@@ -73,8 +76,31 @@
     (i32.const 15)
    )
   )
+  (global.set $g_obj_proto
+   (call $new_object
+    (call $new_root_shape)
+    (i32.const 0)
+    (ref.null none)
+   )
+  )
  )
- (func $print_string_helper (type $14) (param $str (ref $String))
+ (func $new_root_shape (type $14) (result (ref $Shape))
+  (struct.new $Shape
+   (ref.null none)
+   (i32.const -1)
+   (i32.const -1)
+  )
+ )
+ (func $new_object (type $15) (param $shape (ref $Shape)) (param $size i32) (param $proto (ref null $Object)) (result (ref $Object))
+  (struct.new $Object
+   (local.get $shape)
+   (array.new_default $Storage
+    (local.get $size)
+   )
+   (local.get $proto)
+  )
+ )
+ (func $print_string_helper (type $16) (param $str (ref $String))
   (local $len i32)
   (local $i i32)
   (local.set $len
@@ -109,7 +135,7 @@
    )
   )
  )
- (func $console_log (type $15) (param $val anyref)
+ (func $console_log (type $17) (param $val anyref)
   (block $null
    (drop
     (br_on_null $null
@@ -182,7 +208,7 @@
    (i32.const 10)
   )
  )
- (func $get_type_id (type $16) (param $val anyref) (result i32)
+ (func $get_type_id (type $18) (param $val anyref) (result i32)
   (if
    (ref.is_null
     (local.get $val)
@@ -286,7 +312,7 @@
  (func $add_unsupported (type $BinaryOpFunc) (param $0 anyref) (param $1 anyref) (result anyref)
   (ref.null none)
  )
- (func $add_slow (type $17) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+ (func $add_slow (type $19) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
   (local $t_lhs i32)
   (local $t_rhs i32)
   (local $target (ref null $BinaryOpFunc))
@@ -389,7 +415,7 @@
    )
   )
  )
- (func $add_cached (type $17) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
+ (func $add_cached (type $19) (param $lhs anyref) (param $rhs anyref) (param $cache (ref $BinaryOpCallSite)) (result anyref)
   (block $slow
    (br_if $slow
     (i32.ne
@@ -469,7 +495,7 @@
    )
   )
  )
- (func $main (type $18) (result anyref)
+ (func $main (type $20) (result anyref)
   (local $user_a anyref)
   (local $user_b anyref)
   (local $user_c anyref)

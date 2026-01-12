@@ -35,6 +35,22 @@
   (ref.null none)
   (i32.const -1)
  ))
+ (global $site_2 (mut (ref $CallSite)) (struct.new $CallSite
+  (ref.null none)
+  (i32.const -1)
+ ))
+ (global $site_3 (mut (ref $CallSite)) (struct.new $CallSite
+  (ref.null none)
+  (i32.const -1)
+ ))
+ (global $site_4 (mut (ref $CallSite)) (struct.new $CallSite
+  (ref.null none)
+  (i32.const -1)
+ ))
+ (global $site_5 (mut (ref $CallSite)) (struct.new $CallSite
+  (ref.null none)
+  (i32.const -1)
+ ))
  (global $g_str_null (mut (ref null $String)) (ref.null none))
  (global $g_str_obj (mut (ref null $String)) (ref.null none))
  (global $g_obj_proto (mut (ref null $Object)) (ref.null none))
@@ -379,9 +395,20 @@
   )
  )
  (func $main (type $22) (result anyref)
-  (local $user_o anyref)
+  (local $user_proto anyref)
   (local $temp_0 (ref null $Object))
-  (local.set $user_o
+  (local $user_obj anyref)
+  (local $temp_1 anyref)
+  (local $temp_2 (ref null $Object))
+  (local $user_deepProto anyref)
+  (local $temp_3 (ref null $Object))
+  (local $user_midProto anyref)
+  (local $temp_4 anyref)
+  (local $user_obj2 anyref)
+  (local $temp_5 anyref)
+  (local $user_plain anyref)
+  (local $temp_6 (ref null $Object))
+  (local.set $user_proto
    (block (result (ref $Object))
     (call $set_storage
      (ref.as_non_null
@@ -403,7 +430,7 @@
      )
      (i32.const 0)
      (ref.i31
-      (i32.const 1)
+      (i32.const 10)
      )
     )
     (call $set_storage
@@ -412,7 +439,7 @@
      )
      (i32.const 1)
      (ref.i31
-      (i32.const 2)
+      (i32.const 20)
      )
     )
     (ref.as_non_null
@@ -420,23 +447,157 @@
     )
    )
   )
+  (local.set $user_obj
+   (block (result (ref $Object))
+    (call $set_storage
+     (ref.as_non_null
+      (local.tee $temp_2
+       (call $new_object
+        (call $extend_shape
+         (call $new_root_shape)
+         (i32.const 0)
+         (i32.const 0)
+        )
+        (i32.const 1)
+        (ref.cast (ref null $Object)
+         (local.get $user_proto)
+        )
+       )
+      )
+     )
+     (i32.const 0)
+     (ref.i31
+      (i32.const 100)
+     )
+    )
+    (ref.as_non_null
+     (local.get $temp_2)
+    )
+   )
+  )
   (call $console_log
    (call $get_field_cached
     (ref.cast (ref $Object)
-     (local.get $user_o)
+     (local.get $user_obj)
     )
     (global.get $site_0)
     (i32.const 0)
+   )
+  )
+  (call $console_log
+   (call $get_field_cached
+    (ref.cast (ref $Object)
+     (local.get $user_obj)
+    )
+    (global.get $site_1)
+    (i32.const 1)
+   )
+  )
+  (call $console_log
+   (call $get_field_cached
+    (ref.cast (ref $Object)
+     (local.get $user_proto)
+    )
+    (global.get $site_2)
+    (i32.const 0)
+   )
+  )
+  (local.set $user_deepProto
+   (block (result (ref $Object))
+    (call $set_storage
+     (ref.as_non_null
+      (local.tee $temp_3
+       (call $new_object
+        (call $extend_shape
+         (call $new_root_shape)
+         (i32.const 2)
+         (i32.const 0)
+        )
+        (i32.const 1)
+        (global.get $g_obj_proto)
+       )
+      )
+     )
+     (i32.const 0)
+     (ref.i31
+      (i32.const 30)
+     )
+    )
+    (ref.as_non_null
+     (local.get $temp_3)
+    )
+   )
+  )
+  (local.set $user_midProto
+   (call $new_object
+    (call $new_root_shape)
+    (i32.const 0)
+    (ref.cast (ref null $Object)
+     (local.get $user_deepProto)
+    )
+   )
+  )
+  (local.set $user_obj2
+   (call $new_object
+    (call $new_root_shape)
+    (i32.const 0)
+    (ref.cast (ref null $Object)
+     (local.get $user_midProto)
+    )
+   )
+  )
+  (call $console_log
+   (call $get_field_cached
+    (ref.cast (ref $Object)
+     (local.get $user_obj2)
+    )
+    (global.get $site_3)
+    (i32.const 2)
+   )
+  )
+  (local.set $user_plain
+   (block (result (ref $Object))
+    (call $set_storage
+     (ref.as_non_null
+      (local.tee $temp_6
+       (call $new_object
+        (call $extend_shape
+         (call $new_root_shape)
+         (i32.const 3)
+         (i32.const 0)
+        )
+        (i32.const 1)
+        (global.get $g_obj_proto)
+       )
+      )
+     )
+     (i32.const 0)
+     (ref.i31
+      (i32.const 1)
+     )
+    )
+    (ref.as_non_null
+     (local.get $temp_6)
+    )
+   )
+  )
+  (call $console_log
+   (call $get_field_cached
+    (ref.cast (ref $Object)
+     (local.get $user_plain)
+    )
+    (global.get $site_4)
+    (i32.const 3)
    )
   )
   (block (result anyref)
    (call $console_log
     (call $get_field_cached
      (ref.cast (ref $Object)
-      (local.get $user_o)
+      (local.get $user_plain)
      )
-     (global.get $site_1)
-     (i32.const 1)
+     (global.get $site_5)
+     (i32.const 4)
     )
    )
    (ref.null none)
