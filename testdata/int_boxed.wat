@@ -13,14 +13,47 @@
  (type $String (array (mut i8)))
  (type $10 (func (param i32)))
  (type $11 (func (param f64)))
- (type $12 (func (param (ref $String))))
- (type $13 (func (param anyref)))
- (type $14 (func (result anyref)))
+ (type $12 (func))
+ (type $13 (func (param (ref $String))))
+ (type $14 (func (param anyref)))
+ (type $15 (func (result anyref)))
  (import "env" "print_i32" (func $print_i32 (type $10) (param i32)))
  (import "env" "print_f64" (func $print_f64 (type $11) (param f64)))
  (import "env" "print_char" (func $print_char (type $10) (param i32)))
+ (global $g_str_null (mut (ref null $String)) (ref.null none))
+ (global $g_str_obj (mut (ref null $String)) (ref.null none))
  (export "main" (func $main))
- (func $print_string_helper (type $12) (param $str (ref $String))
+ (start $runtime_init)
+ (func $runtime_init (type $12)
+  (global.set $g_str_null
+   (array.new_fixed $String 4
+    (i32.const 110)
+    (i32.const 117)
+    (i32.const 108)
+    (i32.const 108)
+   )
+  )
+  (global.set $g_str_obj
+   (array.new_fixed $String 15
+    (i32.const 91)
+    (i32.const 111)
+    (i32.const 98)
+    (i32.const 106)
+    (i32.const 101)
+    (i32.const 99)
+    (i32.const 116)
+    (i32.const 32)
+    (i32.const 79)
+    (i32.const 98)
+    (i32.const 106)
+    (i32.const 101)
+    (i32.const 99)
+    (i32.const 116)
+    (i32.const 93)
+   )
+  )
+ )
+ (func $print_string_helper (type $13) (param $str (ref $String))
   (local $len i32)
   (local $i i32)
   (local.set $len
@@ -55,18 +88,15 @@
    )
   )
  )
- (func $console_log (type $13) (param $val anyref)
+ (func $console_log (type $14) (param $val anyref)
   (if
    (ref.is_null
     (local.get $val)
    )
    (then
     (call $print_string_helper
-     (array.new_fixed $String 4
-      (i32.const 110)
-      (i32.const 117)
-      (i32.const 108)
-      (i32.const 108)
+     (ref.as_non_null
+      (global.get $g_str_null)
      )
     )
     (call $print_char
@@ -137,22 +167,8 @@
              )
              (then
               (call $print_string_helper
-               (array.new_fixed $String 15
-                (i32.const 91)
-                (i32.const 111)
-                (i32.const 98)
-                (i32.const 106)
-                (i32.const 101)
-                (i32.const 99)
-                (i32.const 116)
-                (i32.const 32)
-                (i32.const 79)
-                (i32.const 98)
-                (i32.const 106)
-                (i32.const 101)
-                (i32.const 99)
-                (i32.const 116)
-                (i32.const 93)
+               (ref.as_non_null
+                (global.get $g_str_obj)
                )
               )
               (call $print_char
@@ -171,7 +187,7 @@
    )
   )
  )
- (func $main (type $14) (result anyref)
+ (func $main (type $15) (result anyref)
   (call $console_log
    (struct.new $BoxedI32
     (i32.const 1073741824)

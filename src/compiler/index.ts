@@ -133,6 +133,16 @@ export function compile(source: string, options?: CompilerOptions): string {
   ${globalsDecl}
   ${dataSegmentsDecl}
 
+  ;; String Pooling for Runtime Constants
+  (global $g_str_null (mut (ref null $String)) (ref.null $String))
+  (global $g_str_obj (mut (ref null $String)) (ref.null $String))
+
+  (func $runtime_init
+    (global.set $g_str_null (array.new_fixed $String 4 (i32.const 110) (i32.const 117) (i32.const 108) (i32.const 108)))
+    (global.set $g_str_obj (array.new_fixed $String 15 (i32.const 91) (i32.const 111) (i32.const 98) (i32.const 106) (i32.const 101) (i32.const 99) (i32.const 116) (i32.const 32) (i32.const 79) (i32.const 98) (i32.const 106) (i32.const 101) (i32.const 99) (i32.const 116) (i32.const 93)))
+  )
+  (start $runtime_init)
+
   (func $new_root_shape (result (ref $Shape))
     (struct.new $Shape
       (ref.null $Shape)
@@ -276,7 +286,7 @@ export function compile(source: string, options?: CompilerOptions): string {
   (func $console_log (param $val anyref)
     (if (ref.is_null (local.get $val))
       (then
-        (call $print_string_helper (array.new_fixed $String 4 (i32.const 110) (i32.const 117) (i32.const 108) (i32.const 108)))
+        (call $print_string_helper (ref.as_non_null (global.get $g_str_null)))
         (call $print_char (i32.const 10))
       )
       (else
@@ -303,7 +313,7 @@ export function compile(source: string, options?: CompilerOptions): string {
                       (else
                          (if (ref.test (ref $Object) (local.get $val))
                            (then
-                             (call $print_string_helper (array.new_fixed $String 15 (i32.const 91) (i32.const 111) (i32.const 98) (i32.const 106) (i32.const 101) (i32.const 99) (i32.const 116) (i32.const 32) (i32.const 79) (i32.const 98) (i32.const 106) (i32.const 101) (i32.const 99) (i32.const 116) (i32.const 93)))
+                             (call $print_string_helper (ref.as_non_null (global.get $g_str_obj)))
                              (call $print_char (i32.const 10))
                            )
                          )

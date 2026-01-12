@@ -8,6 +8,9 @@ This document outlines potential optimizations identified by analyzing the gener
 **Observation:**
 The runtime (e.g., `console.log`) constructs new string objects every time it needs to print a constant string (like "null", "true", "[object Object]").
 
+**Status:**
+Implemented. Globals are used for "null" and "[object Object]".
+
 **Optimization:**
 -   **Deduplication:** Allocate constant strings once in a global or static array during module initialization.
 -   **Reuse:** Reuse these references instead of allocating new arrays on every call.
