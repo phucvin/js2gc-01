@@ -1,4 +1,3 @@
-import ts from 'typescript';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
@@ -37,27 +36,7 @@ async function runBenchmark() {
         const filePath = path.join(benchmarkDir, file);
         const jsSource = fs.readFileSync(filePath, 'utf-8');
 
-        // Measure JS execution (using eval/new Function or external node process?)
-        // For accurate JIT comparison, we should probably run in a separate process or loop.
-        // But for simplicity, we'll use a loop here.
-        // Wait, fib.js might take time.
-        // We'll run it once for now.
-        // Ideally we should use the same harness.
-        // But let's just use `eval` for a rough JS baseline if possible, or skip JS measurement if complex.
-        // `fib.js` calls `fib(30)` or similar?
-        // Let's modify the benchmark files to export a `run` function or similar?
-        // Current `fib.js` calls `fib(15)` at top level?
-        // Let's inspect `fib.js`.
-
-        // Actually, the previous implementation ran `node benchmark/fib.js`?
-        // No, we are building a runner.
-
-        // Let's measure JS time by running it as a script.
-        // We can use `vm` module or just `require` (if it exports main).
-        // `benchmark/fib.js`: `console.log(fib(15))`
-
         let jsDuration = 0;
-        const startJS = performance.now();
         // Since we are in ESM, we can import it?
         // But we want to run it fresh.
         // Let's use `child_process` to run node?

@@ -2,7 +2,11 @@ import ts from 'typescript';
 import { CompilationContext, registerBinaryOpCallSite, getPropertyId } from '../context.ts';
 import { compileExpression } from '../expression.ts';
 
-export function compileBinaryExpression(expr: ts.BinaryExpression, ctx: CompilationContext, dropResult: boolean): string {
+export function compileBinaryExpression(
+    expr: ts.BinaryExpression,
+    ctx: CompilationContext,
+    dropResult: boolean,
+): string {
     const options = ctx.getOptions();
     const enableIC = options.enableInlineCache !== false;
     const fallback = (code: string) => (dropResult ? `(drop ${code})` : code);

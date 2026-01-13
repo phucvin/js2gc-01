@@ -2,7 +2,11 @@ import ts from 'typescript';
 import { CompilationContext, registerGlobalCallSite, getPropertyId, registerBinaryOpCallSite } from '../context.ts';
 import { compileExpression } from '../expression.ts';
 
-export function compilePostfixUnary(expr: ts.PostfixUnaryExpression, ctx: CompilationContext, dropResult: boolean): string {
+export function compilePostfixUnary(
+    expr: ts.PostfixUnaryExpression,
+    ctx: CompilationContext,
+    dropResult: boolean,
+): string {
     const fallback = (code: string) => (dropResult ? `(drop ${code})` : code);
     const options = ctx.getOptions();
     const enableIC = options.enableInlineCache !== false;
@@ -64,7 +68,11 @@ export function compilePostfixUnary(expr: ts.PostfixUnaryExpression, ctx: Compil
     throw new Error(`Unsupported postfix unary operator: ${ts.SyntaxKind[expr.operator]}`);
 }
 
-export function compilePropertyAccess(expr: ts.PropertyAccessExpression, ctx: CompilationContext, dropResult: boolean): string {
+export function compilePropertyAccess(
+    expr: ts.PropertyAccessExpression,
+    ctx: CompilationContext,
+    dropResult: boolean,
+): string {
     const fallback = (code: string) => (dropResult ? `(drop ${code})` : code);
     const options = ctx.getOptions();
     const enableIC = options.enableInlineCache !== false;

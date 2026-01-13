@@ -15,7 +15,10 @@ export function resetClosureCounter() {
     closureCounter = 0;
 }
 
-export function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunction, ctx: CompilationContext): string {
+export function compileFunctionExpression(
+    node: ts.FunctionExpression | ts.ArrowFunction,
+    ctx: CompilationContext,
+): string {
     const closureCtx = new CompilationContext(ctx);
 
     // Register $this if it is a FunctionExpression (not arrow function)

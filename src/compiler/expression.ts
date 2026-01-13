@@ -76,7 +76,7 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
                 }
                 return fallback(code);
             }
-        } catch (e) {
+        } catch (_e) {
             return fallbackPure(`(ref.null any)`);
         }
         return fallbackPure(`(ref.null any)`);

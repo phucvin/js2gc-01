@@ -4,7 +4,7 @@ import { compileExpression } from '../expression.ts';
 
 export function compileLiteral(expr: ts.Expression, ctx: CompilationContext, dropResult: boolean): string {
     const fallbackPure = (code: string) => (dropResult ? `(nop)` : code);
-    const fallback = (code: string) => (dropResult ? `(drop ${code})` : code);
+    // const fallback = (code: string) => (dropResult ? `(drop ${code})` : code);
 
     if (ts.isNumericLiteral(expr)) {
         const val = Number(expr.text);

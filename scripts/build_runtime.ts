@@ -15,7 +15,7 @@ if (!fs.existsSync(runtimeDir)) {
 }
 
 function buildRuntime() {
-    console.log("Building runtime...");
+    console.log('Building runtime...');
 
     // Reset context to ensure fresh state
     resetStringMap();
@@ -83,7 +83,7 @@ function buildRuntime() {
     module.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes | binaryen.Features.BulkMemory);
 
     if (!module.validate()) {
-        console.error("Runtime validation failed");
+        console.error('Runtime validation failed');
         process.exit(1);
     }
 
