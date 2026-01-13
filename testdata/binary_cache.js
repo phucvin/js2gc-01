@@ -21,7 +21,7 @@ function main() {
   // Use a loop to trigger the same call site multiple times
   // 0 + 1 + 2 + 3 + 4 = 10
   for (let j = 0; j < 5; j++) {
-      sum = sum + j;
+    sum = sum + j;
   }
   console.log(sum);
 }

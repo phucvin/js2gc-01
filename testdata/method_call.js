@@ -8,7 +8,7 @@ function main() {
   let obj2 = {
     sub: (a, b) => {
       return a - b;
-    }
+    },
   };
   console.log(obj2.sub(5, 3));
 }

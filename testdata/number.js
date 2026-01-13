@@ -1,1 +1,3 @@
-export function main() { console.log(42); }
+export function main() {
+  console.log(42);
+}

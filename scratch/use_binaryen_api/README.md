@@ -23,6 +23,7 @@ npx ts-node scripts/run_scratch_use_binaryen_api.ts
 ```
 
 This script will:
+
 1. Find all `.ts` example files in this directory.
 2. Execute each one using `ts-node`.
 3. Save the standard output (which typically contains the emitted `.wat` text) to a corresponding `.out` file (e.g., `01_add.ts` -> `01_add.out`).

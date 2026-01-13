@@ -1,4 +1,3 @@
-
 import binaryen from 'binaryen';
 
 const wat = `(module
@@ -10,19 +9,17 @@ const wat = `(module
 )`;
 
 try {
-    const module = binaryen.parseText(wat);
-    module.setFeatures(
-        binaryen.Features.GC |
-        binaryen.Features.ReferenceTypes |
-        binaryen.Features.BulkMemory
-    );
-    if (module.validate()) {
-        console.log("Validation successful");
-        console.log(module.emitText());
-    } else {
-        console.log("Validation failed");
-    }
-    module.dispose();
+  const module = binaryen.parseText(wat);
+  module.setFeatures(
+    binaryen.Features.GC | binaryen.Features.ReferenceTypes | binaryen.Features.BulkMemory,
+  );
+  if (module.validate()) {
+    console.log('Validation successful');
+    console.log(module.emitText());
+  } else {
+    console.log('Validation failed');
+  }
+  module.dispose();
 } catch (e) {
-    console.error(e);
+  console.error(e);
 }

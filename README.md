@@ -22,11 +22,12 @@ npm test
 ```
 
 The runner will:
--   Scan `testdata/` for `.js` files.
--   Compile each file to WAT.
--   Use `binaryen` to convert WAT to Wasm binary.
--   Execute the Wasm binary.
--   Write the output to `.out` files in `testdata/`.
+
+- Scan `testdata/` for `.js` files.
+- Compile each file to WAT.
+- Use `binaryen` to convert WAT to Wasm binary.
+- Execute the Wasm binary.
+- Write the output to `.out` files in `testdata/`.
 
 ## Benchmarks
 
@@ -42,5 +43,5 @@ This runs a few iterations of each benchmark (min of 5) for both Wasm (if availa
 
 | Benchmark | JS (ms) | Wasm IC (ms) | Wasm No IC (ms) | Ratio Wasm(IC)/JS | Ratio Wasm(NoIC)/JS |
 |---|---|---|---|---|---|
-| fib.js | 30.7629 | 3216.6895 | 3253.6800 | 104.56 | 105.77 |
-| field_access.js | 34.1522 | 31.5922 | 28.6690 | 0.93 | 0.84 |
+| fib.js | 47.1747 | 4677.0747 | 4438.8446 | 99.14 | 94.09 |
+| field_access.js | 49.5319 | 38.3740 | 41.7887 | 0.77 | 0.84 |

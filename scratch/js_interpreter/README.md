@@ -30,19 +30,29 @@ Running `testdata/add.js`:
 
 ```javascript
 // testdata/add.js
-function a() { return 1; }
-function b() { return 2; }
-function main() { return a() + b(); }
+function a() {
+  return 1;
+}
+function b() {
+  return 2;
+}
+function main() {
+  return a() + b();
+}
 
-export function test() { console.log(main()); }
+export function test() {
+  console.log(main());
+}
 ```
 
 Command:
+
 ```bash
 ./js_interpreter ../../testdata/add.js
 ```
 
 Output:
+
 ```
 3
 ```

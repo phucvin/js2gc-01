@@ -1,4 +1,4 @@
 {
-	"name": "js2gc-01",
-	"postStartCommand": "opencode web"
+  "name": "js2gc-01",
+  "postStartCommand": "opencode web"
 }

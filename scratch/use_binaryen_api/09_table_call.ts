@@ -1,10 +1,22 @@
-import binaryen from "binaryen";
+import binaryen from 'binaryen';
 
 const module = new binaryen.Module();
 
 // Define two functions to call indirectly
-const f1 = module.addFunction("f1", binaryen.createType([]), binaryen.i32, [], module.i32.const(10));
-const f2 = module.addFunction("f2", binaryen.createType([]), binaryen.i32, [], module.i32.const(20));
+const f1 = module.addFunction(
+  'f1',
+  binaryen.createType([]),
+  binaryen.i32,
+  [],
+  module.i32.const(10),
+);
+const f2 = module.addFunction(
+  'f2',
+  binaryen.createType([]),
+  binaryen.i32,
+  [],
+  module.i32.const(20),
+);
 
 // Add table
 // Table elements must be funcref (or anyfunc)
@@ -20,24 +32,24 @@ const f2 = module.addFunction("f2", binaryen.createType([]), binaryen.i32, [], m
 // But wait, the reviewer said "binaryen.funcref" is the correct one.
 // I will use that.
 
-module.addTable("table", 2, 2, binaryen.funcref || binaryen.anyfunc);
-module.addActiveElementSegment("table", "table", ["f1", "f2"], module.i32.const(0));
+module.addTable('table', 2, 2, binaryen.funcref || binaryen.anyfunc);
+module.addActiveElementSegment('table', 'table', ['f1', 'f2'], module.i32.const(0));
 
 // Function: call_indirect(index: i32) -> i32
 module.addFunction(
-  "call_indirect",
+  'call_indirect',
   binaryen.createType([binaryen.i32]),
   binaryen.i32,
   [],
   module.call_indirect(
-    "table",
+    'table',
     module.local.get(0, binaryen.i32),
     [], // params
-    binaryen.i32 // result
-  )
+    binaryen.i32, // result
+  ),
 );
 
-module.addFunctionExport("call_indirect", "call_indirect");
+module.addFunctionExport('call_indirect', 'call_indirect');
 
 process.stdout.write(module.emitText());
 module.dispose();

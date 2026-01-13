@@ -1,4 +1,4 @@
 function main() {
-    let obj = { x: 10 };
-    console.log(obj);
+  let obj = { x: 10 };
+  console.log(obj);
 }

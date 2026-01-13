@@ -5,29 +5,32 @@
 You are required to log your interactions.
 
 1.  **Identify Session File**:
-    -   A session is defined as a chat session with an agent.
-    -   The session file is named using the timestamp of the first interaction in the session using `YYMonDDTHHmm.md` format (e.g., `28Dec26T1559.md` for Dec 26, 2028).
-    -   Scan `agents-memory/` to find the existing file for the current session. If no such file exists (i.e., this is the start of a new session), generate a timestamp and create a new file.
+    - A session is defined as a chat session with an agent.
+    - The session file is named using the timestamp of the first interaction in the session using `YYMonDDTHHmm.md` format (e.g., `28Dec26T1559.md` for Dec 26, 2028).
+    - Scan `agents-memory/` to find the existing file for the current session. If no such file exists (i.e., this is the start of a new session), generate a timestamp and create a new file.
 
 2.  **Record Interaction**:
-    -   Ensure the file has a summary of the key points at the top.
-    -   Append the user's prompt and the agent's response to the session file.
-    -   Use the format:
-        ```markdown
-        Summary: <Summary of key points in this file>
+    - Ensure the file has a summary of the key points at the top.
+    - Append the user's prompt and the agent's response to the session file.
+    - Use the format:
 
-        # User Prompt
-        <content>
+      ```markdown
+      Summary: <Summary of key points in this file>
 
-        # Agent Response
-        <content>
-        ```
+      # User Prompt
+
+      <content>
+
+      # Agent Response
+
+      <content>
+      ```
 
 3.  **Summarize Before PR**:
-    -   Before creating a PR, update the "Summary" section at the top of the session file to "summarize with medium details what happened here". This ensures the memory record captures a clear context of the work done.
+    - Before creating a PR, update the "Summary" section at the top of the session file to "summarize with medium details what happened here". This ensures the memory record captures a clear context of the work done.
 
 4.  **Submit Changes**:
-    -   Always submit or create a PR if there are changes to the `agents-memory` directory.
+    - Always submit or create a PR if there are changes to the `agents-memory` directory.
 
 ## Memory Retrieval
 

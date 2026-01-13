@@ -1,4 +1,4 @@
-import binaryen from "binaryen";
+import binaryen from 'binaryen';
 
 const module = new binaryen.Module();
 
@@ -7,17 +7,14 @@ const ii2i = binaryen.createType([binaryen.i32, binaryen.i32]);
 
 // Define the add function
 module.addFunction(
-  "add",
+  'add',
   ii2i,
   binaryen.i32,
   [], // No local variables
-  module.i32.add(
-    module.local.get(0, binaryen.i32),
-    module.local.get(1, binaryen.i32)
-  )
+  module.i32.add(module.local.get(0, binaryen.i32), module.local.get(1, binaryen.i32)),
 );
 
-module.addFunctionExport("add", "add");
+module.addFunctionExport('add', 'add');
 
 process.stdout.write(module.emitText());
 module.dispose();

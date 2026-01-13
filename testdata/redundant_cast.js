@@ -14,12 +14,14 @@ function main() {
 
   // 5. Closure (with capture)
   let x = 10;
-  let g = () => { x; };
+  let g = () => {
+    x;
+  };
   g();
 
   // 6. Method call
   let obj = {
-    m: () => {}
+    m: () => {},
   };
   obj.m();
 }

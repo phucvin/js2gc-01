@@ -1,3 +1,3 @@
 export function main() {
-  console.log(10 + "hello");
+  console.log(10 + 'hello');
 }

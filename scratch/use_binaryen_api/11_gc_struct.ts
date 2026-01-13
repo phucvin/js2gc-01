@@ -1,4 +1,4 @@
-import binaryen from "binaryen";
+import binaryen from 'binaryen';
 
 // Define a struct type: struct { field 0: i32 (mutable), field 1: i32 (mutable) }
 // We use TypeBuilder because struct types are heap types.
@@ -13,7 +13,7 @@ const NotPacked = 0;
 
 builder.setStructType(typeIndex, [
   { type: binaryen.i32, packedType: NotPacked, mutable: true },
-  { type: binaryen.i32, packedType: NotPacked, mutable: true }
+  { type: binaryen.i32, packedType: NotPacked, mutable: true },
 ]);
 
 // Build the types
@@ -28,23 +28,17 @@ module.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes);
 
 // Function: mk_struct() -> (ref null $struct)
 module.addFunction(
-  "mk_struct",
+  'mk_struct',
   binaryen.createType([]),
   structType,
   [],
-  module.struct.new(
-    [
-      module.i32.const(10),
-      module.i32.const(20)
-    ],
-    structHeapType
-  )
+  module.struct.new([module.i32.const(10), module.i32.const(20)], structHeapType),
 );
 
-module.addFunctionExport("mk_struct", "mk_struct");
+module.addFunctionExport('mk_struct', 'mk_struct');
 
 if (!module.validate()) {
-    throw new Error("Invalid module");
+  throw new Error('Invalid module');
 }
 
 process.stdout.write(module.emitText());

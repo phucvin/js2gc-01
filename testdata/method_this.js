@@ -1,6 +1,6 @@
 function main() {
   let obj = { x: 10 };
-  obj.inc = function(v) {
+  obj.inc = function (v) {
     return this.x + v;
   };
   console.log(obj.inc(5));
