@@ -1,9 +1,9 @@
 (module
  (rec
-  (type $Shape (struct (field $parent (ref null $Shape)) (field $key i32) (field $offset i32)))
+  (type $Shape (struct (field $parent (ref null $Shape)) (field $key i32) (field $offset i32) (field $proto anyref)))
   (type $Storage (array (mut anyref)))
   (type $Object (struct (field $shape (mut (ref $Shape))) (field $storage (mut (ref $Storage)))))
-  (type $CallSite (struct (field $expected_shape (mut (ref null $Shape))) (field $offset (mut i32))))
+  (type $CallSite (struct (field $expected_shape (mut (ref null $Shape))) (field $offset (mut i32)) (field $holder (mut anyref))))
   (type $Closure (struct (field $func (ref func)) (field $env anyref)))
   (type $BinaryOpFunc (func (param anyref anyref) (result anyref)))
   (type $BinaryOpCallSite (struct (field $type_lhs (mut i32)) (field $type_rhs (mut i32)) (field $target (mut (ref null $BinaryOpFunc)))))
@@ -27,9 +27,11 @@
    (ref.null none)
    (i32.const -1)
    (i32.const -1)
+   (ref.null none)
   )
   (i32.const 0)
   (i32.const 0)
+  (ref.null none)
  ))
  (global $g_str_null (mut (ref null $String)) (ref.null none))
  (global $g_str_obj (mut (ref null $String)) (ref.null none))
