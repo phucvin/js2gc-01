@@ -8,7 +8,7 @@ function resetClosureCounter() {
     closureCounter = 0;
 }
 
-// Export reset for index.ts to call
+// Export for reset for index.ts to call
 export { resetClosureCounter };
 
 function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunction, ctx: CompilationContext): string {
@@ -69,7 +69,8 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
         let envAccess;
         if (offset === 0) {
              // We must use ref.as_non_null because local.tee returns the type of the local (nullable).
-             envAccess = `(ref.as_non_null (local.tee ${envLocal} (call $new_object ${envCreationCode} (i32.const ${totalCaptured}))))`;
+             // Pass (ref.null $Object) as prototype for environment objects
+             envAccess = `(ref.as_non_null (local.tee ${envLocal} (call $new_object ${envCreationCode} (i32.const ${totalCaptured}) (ref.null $Object))))`;
         } else {
              envAccess = `(ref.as_non_null (local.get ${envLocal}))`;
         }
@@ -106,7 +107,7 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
     registerGeneratedFunction(`(elem declare func $${funcName})`);
 
     if (totalCaptured === 0) {
-        return `(struct.new $Closure (ref.func $${funcName}) (call $new_object ${envCreationCode} (i32.const 0)))`;
+        return `(struct.new $Closure (ref.func $${funcName}) (call $new_object ${envCreationCode} (i32.const 0) (ref.null $Object)))`;
     }
 
     return `(block (result (ref $Closure))
@@ -181,44 +182,53 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
       return fallbackPure(`(ref.i31 (i32.const 0))`);
   } else if (ts.isObjectLiteralExpression(expr)) {
       const propNames: string[] = [];
+      let protoProp: ts.PropertyAssignment | null = null;
+
       for (const prop of expr.properties) {
           if (ts.isPropertyAssignment(prop) && prop.name && ts.isIdentifier(prop.name)) {
-              propNames.push(prop.name.text);
+              if (prop.name.text === '__proto__') {
+                  protoProp = prop;
+              } else {
+                  propNames.push(prop.name.text);
+              }
           }
       }
 
       const shapeGlobal = registerShape(propNames);
       const shapeCode = `(global.get ${shapeGlobal})`;
-
       const totalProps = propNames.length;
-      if (totalProps === 0) {
-          const code = `(call $new_object ${shapeCode} (i32.const 0))`;
+
+      // Optimization for empty object with default proto
+      if (totalProps === 0 && !protoProp) {
+          const code = `(call $new_object ${shapeCode} (i32.const 0) (global.get $g_obj_proto))`;
           return dropResult ? `(drop ${code})` : code;
       }
 
       const objLocal = ctx.getTempLocal('(ref null $Object)');
 
+      let initCode = `(local.set ${objLocal} (call $new_object ${shapeCode} (i32.const ${totalProps}) (global.get $g_obj_proto)))`;
+
+      let setProtoCode = '';
+      if (protoProp) {
+          const val = compileExpression(protoProp.initializer, ctx);
+          setProtoCode = `(struct.set $Object $proto (ref.as_non_null (local.get ${objLocal})) (ref.cast (ref null $Object) ${val}))`;
+      }
+
       let setPropsCode = '';
       let offset = 0;
       for (const prop of expr.properties) {
           if (ts.isPropertyAssignment(prop) && prop.name && ts.isIdentifier(prop.name)) {
+              if (prop.name.text === '__proto__') continue;
+
               const valCode = compileExpression(prop.initializer, ctx);
-
-              let objAccess;
-              if (offset === 0) {
-                   // We must use ref.as_non_null because local.tee returns the type of the local (nullable),
-                   // but set_storage expects a non-nullable reference.
-                   objAccess = `(ref.as_non_null (local.tee ${objLocal} (call $new_object ${shapeCode} (i32.const ${totalProps}))))`;
-              } else {
-                   objAccess = `(ref.as_non_null (local.get ${objLocal}))`;
-              }
-
-              setPropsCode += `(call $set_storage ${objAccess} (i32.const ${offset}) ${valCode})\n`;
+              setPropsCode += `(call $set_storage (ref.as_non_null (local.get ${objLocal})) (i32.const ${offset}) ${valCode})\n`;
               offset++;
           }
       }
 
       const code = `(block (result (ref $Object))
+         ${initCode}
+         ${setProtoCode}
          ${setPropsCode}
          (ref.as_non_null (local.get ${objLocal}))
       )`;
@@ -475,10 +485,7 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
       throw new Error(`Unknown identifier: ${varName}`);
   } else if (ts.isArrowFunction(expr) || ts.isFunctionExpression(expr)) {
       const code = compileFunctionExpression(expr, ctx);
-      return fallbackPure(code); // Function creation is technically pure-ish if not assigned?
-      // Wait, it creates a closure object on heap. That has side effects (allocation).
-      // But if we drop it, we don't care. It's not observable.
-      // So fallbackPure is okay.
+      return fallbackPure(code);
   } else if (expr.kind === ts.SyntaxKind.ThisKeyword) {
       try {
           const res = ctx.lookup('$this');

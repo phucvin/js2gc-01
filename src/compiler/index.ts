@@ -105,6 +105,7 @@ export function compile(source: string, options?: CompilerOptions): string {
     (type $Object (struct
       (field $shape (mut (ref $Shape)))
       (field $storage (mut (ref $Storage)))
+      (field $proto (mut (ref null $Object)))
     ))
 
     ${enableInlineCache ? `(type $CallSite (struct
@@ -145,12 +146,7 @@ export function compile(source: string, options?: CompilerOptions): string {
   ;; String Pooling for Runtime Constants
   (global $g_str_null (mut (ref null $String)) (ref.null $String))
   (global $g_str_obj (mut (ref null $String)) (ref.null $String))
-
-  (func $runtime_init
-    (global.set $g_str_null (array.new_data $String ${nullData} (i32.const 0) (i32.const 4)))
-    (global.set $g_str_obj (array.new_data $String ${objData} (i32.const 0) (i32.const 15)))
-  )
-  (start $runtime_init)
+  (global $g_obj_proto (mut (ref null $Object)) (ref.null $Object))
 
   (func $new_root_shape (result (ref $Shape))
     (struct.new $Shape
@@ -160,18 +156,27 @@ export function compile(source: string, options?: CompilerOptions): string {
     )
   )
 
+  (func $new_object (param $shape (ref $Shape)) (param $size i32) (param $proto (ref null $Object)) (result (ref $Object))
+    (struct.new $Object
+      (local.get $shape)
+      (array.new_default $Storage (local.get $size))
+      (local.get $proto)
+    )
+  )
+
+  (func $runtime_init
+    (global.set $g_str_null (array.new_data $String ${nullData} (i32.const 0) (i32.const 4)))
+    (global.set $g_str_obj (array.new_data $String ${objData} (i32.const 0) (i32.const 15)))
+    ;; Create default object prototype
+    (global.set $g_obj_proto (call $new_object (call $new_root_shape) (i32.const 0) (ref.null $Object)))
+  )
+  (start $runtime_init)
+
   (func $extend_shape (param $parent (ref $Shape)) (param $key i32) (param $offset i32) (result (ref $Shape))
     (struct.new $Shape
       (local.get $parent)
       (local.get $key)
       (local.get $offset)
-    )
-  )
-
-  (func $new_object (param $shape (ref $Shape)) (param $size i32) (result (ref $Object))
-    (struct.new $Object
-      (local.get $shape)
-      (array.new_default $Storage (local.get $size))
     )
   )
 
@@ -242,21 +247,38 @@ export function compile(source: string, options?: CompilerOptions): string {
     (i32.const -1)
   )
 
-  (func $get_field_resolve (param $obj (ref $Object)) (param $shape (ref $Shape)) ${enableInlineCache ? '(param $cache (ref $CallSite))' : ''} (param $key i32) (result anyref)
+  (func $get_field_resolve (param $obj (ref $Object)) (param $shape (ref $Shape)) ${enableInlineCache ? '(param $cache (ref null $CallSite))' : ''} (param $key i32) (result anyref)
     (local $offset i32)
+    (local $proto (ref null $Object))
 
     (local.set $offset (call $lookup_in_shape (local.get $shape) (local.get $key)))
 
+    ${enableInlineCache ? `
+    (if (ref.is_null (local.get $cache))
+        (then)
+        (else
+           (struct.set $CallSite $expected_shape (local.get $cache) (local.get $shape))
+           (struct.set $CallSite $offset (local.get $cache) (local.get $offset))
+        )
+    )
+    ` : ''}
+
     (if (i32.ge_s (local.get $offset) (i32.const 0))
       (then
-        ${enableInlineCache ? `
-        (struct.set $CallSite $expected_shape (local.get $cache) (local.get $shape))
-        (struct.set $CallSite $offset (local.get $cache) (local.get $offset))
-        ` : ''}
         (return (array.get $Storage (struct.get $Object $storage (local.get $obj)) (local.get $offset)))
       )
     )
-    (ref.null any)
+
+    ;; Inherited?
+    (local.set $proto (struct.get $Object $proto (local.get $obj)))
+    (if (ref.is_null (local.get $proto)) (then (return (ref.null any))))
+
+    (call $get_field_resolve
+        (ref.as_non_null (local.get $proto))
+        (struct.get $Object $shape (ref.as_non_null (local.get $proto)))
+        ${enableInlineCache ? '(ref.null $CallSite)' : ''}
+        (local.get $key)
+    )
   )
 
   (func $get_field_slow (param $obj (ref $Object)) ${enableInlineCache ? '(param $cache (ref $CallSite))' : ''} (param $key i32) (result anyref)
@@ -270,6 +292,7 @@ export function compile(source: string, options?: CompilerOptions): string {
 
   ${enableInlineCache ? `(func $get_field_cached (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
     (local $shape (ref $Shape))
+    (local $proto (ref null $Object))
     (local.set $shape (struct.get $Object $shape (local.get $obj)))
 
     (if (ref.eq
@@ -277,10 +300,26 @@ export function compile(source: string, options?: CompilerOptions): string {
           (struct.get $CallSite $expected_shape (local.get $cache))
         )
       (then
-        (return (array.get $Storage
-          (struct.get $Object $storage (local.get $obj))
-          (struct.get $CallSite $offset (local.get $cache))
-        ))
+        (if (i32.ge_s (struct.get $CallSite $offset (local.get $cache)) (i32.const 0))
+            (then
+                (return (array.get $Storage
+                  (struct.get $Object $storage (local.get $obj))
+                  (struct.get $CallSite $offset (local.get $cache))
+                ))
+            )
+            (else
+               ;; Cached miss. Delegate to proto immediately.
+               (local.set $proto (struct.get $Object $proto (local.get $obj)))
+               (if (ref.is_null (local.get $proto)) (then (return (ref.null any))))
+
+               (return (call $get_field_resolve
+                   (ref.as_non_null (local.get $proto))
+                   (struct.get $Object $shape (ref.as_non_null (local.get $proto)))
+                   (ref.null $CallSite)
+                   (local.get $key)
+               ))
+            )
+        )
       )
     )
     (call $get_field_resolve (local.get $obj) (local.get $shape) (local.get $cache) (local.get $key))
