@@ -150,7 +150,7 @@ export class CompilationContext {
         this.locals.set(name, type);
     }
 
-    lookup(name: string): { type: 'local' | 'captured' | 'global', typeName?: string } {
+    lookup(name: string): { type: 'local' | 'captured' | 'global'; typeName?: string } {
         if (this.locals.has(name)) {
             return { type: 'local', typeName: this.locals.get(name) };
         }

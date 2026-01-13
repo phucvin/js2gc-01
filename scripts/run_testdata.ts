@@ -12,7 +12,7 @@ const testDataDir = path.join(projectRoot, 'testdata');
 async function run() {
     const files = fs.readdirSync(testDataDir);
     // Exclude run.ts and run.js
-    const jsFiles = files.filter(f => f.endsWith('.js') && f !== 'run.js' && f !== 'run.ts');
+    const jsFiles = files.filter((f) => f.endsWith('.js') && f !== 'run.js' && f !== 'run.ts');
 
     console.log(`Found ${jsFiles.length} JS examples in ${testDataDir}:`, jsFiles);
 
@@ -21,23 +21,23 @@ async function run() {
         const filePath = path.join(testDataDir, file);
         const jsSource = fs.readFileSync(filePath, 'utf-8');
 
-        console.log("Compiling to WAT...");
-        let watText = "";
+        console.log('Compiling to WAT...');
+        let watText = '';
         try {
             watText = compile(jsSource);
         } catch (e) {
-             console.error(`Compilation failed for ${file}:`, e);
-             process.exit(1);
+            console.error(`Compilation failed for ${file}:`, e);
+            process.exit(1);
         }
 
         const watPath = path.join(testDataDir, `${file.replace('.js', '.wat')}`);
         fs.writeFileSync(watPath, watText);
         console.log(`WAT written to ${watPath}`);
 
-        console.log("Parsing WAT with Binaryen...");
+        console.log('Parsing WAT with Binaryen...');
         const module = binaryen.parseText(watText);
 
-        console.log("Setting features (GC | ReferenceTypes | BulkMemory)...");
+        console.log('Setting features (GC | ReferenceTypes | BulkMemory)...');
         module.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes | binaryen.Features.BulkMemory);
 
         if (!module.validate()) {
@@ -55,13 +55,19 @@ async function run() {
         try {
             const compiled = await WebAssembly.compile(binary as any);
 
-            let output = "";
+            let output = '';
             const imports = {
                 env: {
-                    print_i32: (val: number) => { output += val + "\n"; },
-                    print_f64: (val: number) => { output += val + "\n"; },
-                    print_char: (val: number) => { output += String.fromCharCode(val); },
-                }
+                    print_i32: (val: number) => {
+                        output += val + '\n';
+                    },
+                    print_f64: (val: number) => {
+                        output += val + '\n';
+                    },
+                    print_char: (val: number) => {
+                        output += String.fromCharCode(val);
+                    },
+                },
             };
 
             const instance = await WebAssembly.instantiate(compiled, imports);
@@ -85,16 +91,15 @@ async function run() {
             const outPath = path.join(testDataDir, `${file.replace(/\.js$/, '.out')}`);
             fs.writeFileSync(outPath, output);
             console.log(`Output written to ${outPath}`);
-
         } catch (e) {
             console.error(`Execution failed for ${file}:`, e);
             process.exit(1);
         }
     }
-    console.log("\nAll examples processed successfully!");
+    console.log('\nAll examples processed successfully!');
 }
 
-run().catch(e => {
+run().catch((e) => {
     console.error(e);
     process.exit(1);
 });
