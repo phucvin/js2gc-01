@@ -80,7 +80,9 @@ Arithmetic operations often box operands into `i31ref` or `BoxedI32` unnecessari
 -   **Pre-computed Shapes:** Uses `registerShape` to create global shape definitions for object literals.
 -   **Efficient Initialization:** Uses `local.tee` to avoid redundant `local.get` during property assignment.
 
-### 6. Use Non-Nullable Fields in Structures
+### 7. Prototype Inheritance with Inline Cache
 **Status:** Implemented.
--   `$Closure` uses `(ref func)`.
--   `$Object` uses `(mut (ref $Shape))` and `(mut (ref $Storage))`.
+-   **Structure:** `$Shape` now includes `$proto` (prototype). `$CallSite` (Inline Cache) includes `$holder` (the object where the property was found).
+-   **Lookup:** `$get_field_resolve` walks the prototype chain if the property is not found on the receiver.
+-   **Optimization:** `$get_field_cached` checks the shape. If matched, it uses the cached `$holder` to access the property directly (either on the receiver or the prototype), avoiding the chain traversal in the fast path.
+

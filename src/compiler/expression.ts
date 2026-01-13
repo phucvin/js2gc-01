@@ -57,9 +57,9 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
 
              if (options.enableInlineCache !== false) {
                  const cacheGlobal = registerGlobalCallSite();
-                 valCode = `(call $get_field_cached (local.get $env) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
+                 valCode = `(call $get_field_cached (ref.cast (ref $Object) (local.get $env)) (global.get ${cacheGlobal}) (i32.const ${keyId}))`;
              } else {
-                 valCode = `(call $get_field_slow (local.get $env) (i32.const ${keyId}))`;
+                 valCode = `(call $get_field_slow (ref.cast (ref $Object) (local.get $env)) (i32.const ${keyId}))`;
              }
 
         } else {
@@ -255,6 +255,29 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
              const code = `(call $${funcName} ${expr.arguments.map(a => compileExpression(a, ctx)).join(' ')})`;
              return fallback(code);
           }
+      } else if (ts.isPropertyAccessExpression(expr.expression) &&
+                 ts.isIdentifier(expr.expression.expression) &&
+                 expr.expression.expression.text === 'Object' &&
+                 expr.expression.name.text === 'create') {
+          // Object.create(proto)
+          const protoExpr = expr.arguments[0];
+          const protoCode = compileExpression(protoExpr, ctx);
+          const objLocal = ctx.getTempLocal('(ref null $Object)');
+
+          // 1. Create a new shape with the proto
+          // We need a runtime function to create a new root shape given a prototype.
+          // (call $new_root_shape (proto))
+          // 2. Create the object with that shape
+          // (call $new_object (shape) 0)
+
+          const code = `(block (result (ref $Object))
+              (local.set ${objLocal} (call $new_object
+                  (call $new_root_shape (ref.cast (ref $Object) ${protoCode}))
+                  (i32.const 0)
+              ))
+              (ref.as_non_null (local.get ${objLocal}))
+          )`;
+           return dropResult ? `(drop ${code})` : code;
       } else if (ts.isPropertyAccessExpression(expr.expression) && ts.isIdentifier(expr.expression.name)) {
           // Method call obj.method(...)
           const objExpr = expr.expression.expression;

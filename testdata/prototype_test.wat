@@ -3,29 +3,55 @@
   (type $Shape (struct (field $parent (ref null $Shape)) (field $key i32) (field $offset i32) (field $proto anyref)))
   (type $Storage (array (mut anyref)))
   (type $Object (struct (field $shape (mut (ref $Shape))) (field $storage (mut (ref $Storage)))))
+  (type $CallSite (struct (field $expected_shape (mut (ref null $Shape))) (field $offset (mut i32)) (field $holder (mut anyref))))
   (type $Closure (struct (field $func (ref func)) (field $env anyref)))
   (type $BinaryOpFunc (func (param anyref anyref) (result anyref)))
+  (type $BinaryOpCallSite (struct (field $type_lhs (mut i32)) (field $type_rhs (mut i32)) (field $target (mut (ref null $BinaryOpFunc)))))
  )
- (type $ClosureSig0 (func (param anyref anyref) (result anyref)))
  (type $BoxedF64 (struct (field f64)))
  (type $BoxedI32 (struct (field i32)))
  (type $String (array (mut i8)))
- (type $9 (func (param i32)))
- (type $10 (func (param f64)))
- (type $11 (func))
- (type $12 (func (param (ref $Shape) i32 i32) (result (ref $Shape))))
- (type $13 (func (param (ref $Shape) i32) (result (ref $Object))))
- (type $14 (func (param (ref $Object) i32 anyref)))
- (type $15 (func (param (ref $Shape) i32) (result i32)))
- (type $16 (func (param (ref $Object) (ref $Shape) i32) (result anyref)))
- (type $17 (func (param (ref $Object) i32) (result anyref)))
- (type $18 (func (param (ref $String))))
- (type $19 (func (param anyref)))
- (type $20 (func (param anyref) (result i32)))
- (type $21 (func (result anyref)))
- (import "env" "print_i32" (func $print_i32 (type $9) (param i32)))
- (import "env" "print_f64" (func $print_f64 (type $10) (param f64)))
- (import "env" "print_char" (func $print_char (type $9) (param i32)))
+ (type $10 (func (param i32)))
+ (type $11 (func (param f64)))
+ (type $12 (func))
+ (type $13 (func (param anyref) (result (ref $Shape))))
+ (type $14 (func (param (ref $Shape) i32 i32) (result (ref $Shape))))
+ (type $15 (func (param (ref $Shape) i32) (result (ref $Object))))
+ (type $16 (func (param (ref $Object) i32 anyref)))
+ (type $17 (func (param (ref $Shape) i32) (result i32)))
+ (type $18 (func (param (ref $Object) (ref $Shape) (ref $CallSite) i32) (result anyref)))
+ (type $19 (func (param (ref $Object) (ref $CallSite) i32) (result anyref)))
+ (type $20 (func (param (ref $String))))
+ (type $21 (func (param anyref)))
+ (type $22 (func (result anyref)))
+ (import "env" "print_i32" (func $print_i32 (type $10) (param i32)))
+ (import "env" "print_f64" (func $print_f64 (type $11) (param f64)))
+ (import "env" "print_char" (func $print_char (type $10) (param i32)))
+ (global $site_0 (mut (ref $CallSite)) (struct.new $CallSite
+  (ref.null none)
+  (i32.const -1)
+  (ref.null none)
+ ))
+ (global $site_1 (mut (ref $CallSite)) (struct.new $CallSite
+  (ref.null none)
+  (i32.const -1)
+  (ref.null none)
+ ))
+ (global $site_2 (mut (ref $CallSite)) (struct.new $CallSite
+  (ref.null none)
+  (i32.const -1)
+  (ref.null none)
+ ))
+ (global $site_3 (mut (ref $CallSite)) (struct.new $CallSite
+  (ref.null none)
+  (i32.const -1)
+  (ref.null none)
+ ))
+ (global $site_4 (mut (ref $CallSite)) (struct.new $CallSite
+  (ref.null none)
+  (i32.const -1)
+  (ref.null none)
+ ))
  (global $shape_literal_0 (ref $Shape) (struct.new $Shape
   (struct.new $Shape
    (ref.null none)
@@ -41,10 +67,9 @@
  (global $g_str_obj (mut (ref null $String)) (ref.null none))
  (data $str_data_0 "null")
  (data $str_data_1 "[object Object]")
- (elem declare func $add_f64_f64 $add_f64_i32 $add_i32_f64 $add_i32_i32 $add_unsupported)
  (export "main" (func $main))
  (start $runtime_init)
- (func $runtime_init (type $11)
+ (func $runtime_init (type $12)
   (global.set $g_str_null
    (array.new_data $String $str_data_0
     (i32.const 0)
@@ -58,7 +83,15 @@
    )
   )
  )
- (func $extend_shape (type $12) (param $parent (ref $Shape)) (param $key i32) (param $offset i32) (result (ref $Shape))
+ (func $new_root_shape (type $13) (param $proto anyref) (result (ref $Shape))
+  (struct.new $Shape
+   (ref.null none)
+   (i32.const -1)
+   (i32.const -1)
+   (local.get $proto)
+  )
+ )
+ (func $extend_shape (type $14) (param $parent (ref $Shape)) (param $key i32) (param $offset i32) (result (ref $Shape))
   (struct.new $Shape
    (local.get $parent)
    (local.get $key)
@@ -68,7 +101,7 @@
    )
   )
  )
- (func $new_object (type $13) (param $shape (ref $Shape)) (param $size i32) (result (ref $Object))
+ (func $new_object (type $15) (param $shape (ref $Shape)) (param $size i32) (result (ref $Object))
   (struct.new $Object
    (local.get $shape)
    (array.new_default $Storage
@@ -76,7 +109,7 @@
    )
   )
  )
- (func $set_storage (type $14) (param $obj (ref $Object)) (param $idx i32) (param $val anyref)
+ (func $set_storage (type $16) (param $obj (ref $Object)) (param $idx i32) (param $val anyref)
   (array.set $Storage
    (struct.get $Object $storage
     (local.get $obj)
@@ -85,7 +118,7 @@
    (local.get $val)
   )
  )
- (func $put_field (type $14) (param $obj (ref $Object)) (param $key i32) (param $val anyref)
+ (func $put_field (type $16) (param $obj (ref $Object)) (param $key i32) (param $val anyref)
   (local $shape (ref $Shape))
   (local $offset i32)
   (local $old_storage (ref $Storage))
@@ -168,7 +201,7 @@
    )
   )
  )
- (func $lookup_in_shape (type $15) (param $shape (ref $Shape)) (param $key i32) (result i32)
+ (func $lookup_in_shape (type $17) (param $shape (ref $Shape)) (param $key i32) (result i32)
   (local $curr (ref null $Shape))
   (local.set $curr
    (local.get $shape)
@@ -210,7 +243,7 @@
   )
   (i32.const -1)
  )
- (func $get_field_resolve (type $16) (param $obj (ref $Object)) (param $shape (ref $Shape)) (param $key i32) (result anyref)
+ (func $get_field_resolve (type $18) (param $obj (ref $Object)) (param $shape (ref $Shape)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
   (local $offset i32)
   (local $curr_obj anyref)
   (local $curr_shape (ref $Shape))
@@ -233,6 +266,34 @@
      (i32.const 0)
     )
     (then
+     (struct.set $CallSite $expected_shape
+      (local.get $cache)
+      (local.get $shape)
+     )
+     (struct.set $CallSite $offset
+      (local.get $cache)
+      (local.get $offset)
+     )
+     (if
+      (ref.eq
+       (ref.cast eqref
+        (local.get $curr_obj)
+       )
+       (local.get $obj)
+      )
+      (then
+       (struct.set $CallSite $holder
+        (local.get $cache)
+        (ref.null none)
+       )
+      )
+      (else
+       (struct.set $CallSite $holder
+        (local.get $cache)
+        (local.get $curr_obj)
+       )
+      )
+     )
      (return
       (array.get $Storage
        (struct.get $Object $storage
@@ -278,16 +339,68 @@
   )
   (ref.null none)
  )
- (func $get_field_slow (type $17) (param $obj (ref $Object)) (param $key i32) (result anyref)
-  (call $get_field_resolve
-   (local.get $obj)
+ (func $get_field_cached (type $19) (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
+  (local $shape (ref $Shape))
+  (local $holder anyref)
+  (local.set $shape
    (struct.get $Object $shape
     (local.get $obj)
    )
+  )
+  (if
+   (ref.eq
+    (local.get $shape)
+    (struct.get $CallSite $expected_shape
+     (local.get $cache)
+    )
+   )
+   (then
+    (local.set $holder
+     (struct.get $CallSite $holder
+      (local.get $cache)
+     )
+    )
+    (if
+     (ref.is_null
+      (local.get $holder)
+     )
+     (then
+      (return
+       (array.get $Storage
+        (struct.get $Object $storage
+         (local.get $obj)
+        )
+        (struct.get $CallSite $offset
+         (local.get $cache)
+        )
+       )
+      )
+     )
+     (else
+      (return
+       (array.get $Storage
+        (struct.get $Object $storage
+         (ref.cast (ref $Object)
+          (local.get $holder)
+         )
+        )
+        (struct.get $CallSite $offset
+         (local.get $cache)
+        )
+       )
+      )
+     )
+    )
+   )
+  )
+  (call $get_field_resolve
+   (local.get $obj)
+   (local.get $shape)
+   (local.get $cache)
    (local.get $key)
   )
  )
- (func $print_string_helper (type $18) (param $str (ref $String))
+ (func $print_string_helper (type $20) (param $str (ref $String))
   (local $len i32)
   (local $i i32)
   (local.set $len
@@ -322,7 +435,7 @@
    )
   )
  )
- (func $console_log (type $19) (param $val anyref)
+ (func $console_log (type $21) (param $val anyref)
   (block $null
    (drop
     (br_on_null $null
@@ -395,245 +508,18 @@
    (i32.const 10)
   )
  )
- (func $get_type_id (type $20) (param $val anyref) (result i32)
-  (if
-   (ref.is_null
-    (local.get $val)
-   )
-   (then
-    (return
-     (i32.const 0)
-    )
-   )
-  )
-  (if
-   (ref.test (ref i31)
-    (local.get $val)
-   )
-   (then
-    (return
-     (i32.const 1)
-    )
-   )
-  )
-  (if
-   (ref.test (ref $BoxedF64)
-    (local.get $val)
-   )
-   (then
-    (return
-     (i32.const 2)
-    )
-   )
-  )
-  (i32.const 0)
- )
- (func $add_i32_i32 (type $BinaryOpFunc) (param $0 anyref) (param $1 anyref) (result anyref)
-  (ref.i31
-   (i32.add
-    (i31.get_s
-     (ref.cast (ref i31)
-      (local.get $0)
-     )
-    )
-    (i31.get_s
-     (ref.cast (ref i31)
-      (local.get $1)
-     )
-    )
-   )
-  )
- )
- (func $add_f64_f64 (type $BinaryOpFunc) (param $0 anyref) (param $1 anyref) (result anyref)
-  (struct.new $BoxedF64
-   (f64.add
-    (struct.get $BoxedF64 0
-     (ref.cast (ref $BoxedF64)
-      (local.get $0)
-     )
-    )
-    (struct.get $BoxedF64 0
-     (ref.cast (ref $BoxedF64)
-      (local.get $1)
-     )
-    )
-   )
-  )
- )
- (func $add_i32_f64 (type $BinaryOpFunc) (param $0 anyref) (param $1 anyref) (result anyref)
-  (struct.new $BoxedF64
-   (f64.add
-    (f64.convert_i32_s
-     (i31.get_s
-      (ref.cast (ref i31)
-       (local.get $0)
-      )
-     )
-    )
-    (struct.get $BoxedF64 0
-     (ref.cast (ref $BoxedF64)
-      (local.get $1)
-     )
-    )
-   )
-  )
- )
- (func $add_f64_i32 (type $BinaryOpFunc) (param $0 anyref) (param $1 anyref) (result anyref)
-  (struct.new $BoxedF64
-   (f64.add
-    (struct.get $BoxedF64 0
-     (ref.cast (ref $BoxedF64)
-      (local.get $0)
-     )
-    )
-    (f64.convert_i32_s
-     (i31.get_s
-      (ref.cast (ref i31)
-       (local.get $1)
-      )
-     )
-    )
-   )
-  )
- )
- (func $add_unsupported (type $BinaryOpFunc) (param $0 anyref) (param $1 anyref) (result anyref)
-  (ref.null none)
- )
- (func $add_slow (type $ClosureSig0) (param $lhs anyref) (param $rhs anyref) (result anyref)
-  (local $t_lhs i32)
-  (local $t_rhs i32)
-  (local $target (ref null $BinaryOpFunc))
-  (local.set $t_lhs
-   (call $get_type_id
-    (local.get $lhs)
-   )
-  )
-  (local.set $t_rhs
-   (call $get_type_id
-    (local.get $rhs)
-   )
-  )
-  (local.set $target
-   (ref.func $add_unsupported)
-  )
-  (if
-   (i32.eq
-    (local.get $t_lhs)
-    (i32.const 1)
-   )
-   (then
-    (if
-     (i32.eq
-      (local.get $t_rhs)
-      (i32.const 1)
-     )
-     (then
-      (local.set $target
-       (ref.func $add_i32_i32)
-      )
-     )
-     (else
-      (if
-       (i32.eq
-        (local.get $t_rhs)
-        (i32.const 2)
-       )
-       (then
-        (local.set $target
-         (ref.func $add_i32_f64)
-        )
-       )
-      )
-     )
-    )
-   )
-   (else
-    (if
-     (i32.eq
-      (local.get $t_lhs)
-      (i32.const 2)
-     )
-     (then
-      (if
-       (i32.eq
-        (local.get $t_rhs)
-        (i32.const 1)
-       )
-       (then
-        (local.set $target
-         (ref.func $add_f64_i32)
-        )
-       )
-       (else
-        (if
-         (i32.eq
-          (local.get $t_rhs)
-          (i32.const 2)
-         )
-         (then
-          (local.set $target
-           (ref.func $add_f64_f64)
-          )
-         )
-        )
-       )
-      )
-     )
-    )
-   )
-  )
-  (call_ref $BinaryOpFunc
-   (local.get $lhs)
-   (local.get $rhs)
-   (local.get $target)
-  )
- )
- (func $less_than (type $ClosureSig0) (param $lhs anyref) (param $rhs anyref) (result anyref)
-  (if (result anyref)
-   (ref.test (ref i31)
-    (local.get $lhs)
-   )
-   (then
-    (if (result anyref)
-     (ref.test (ref i31)
-      (local.get $rhs)
-     )
-     (then
-      (ref.i31
-       (i32.lt_s
-        (i31.get_s
-         (ref.cast (ref i31)
-          (local.get $lhs)
-         )
-        )
-        (i31.get_s
-         (ref.cast (ref i31)
-          (local.get $rhs)
-         )
-        )
-       )
-      )
-     )
-     (else
-      (ref.i31
-       (i32.const 0)
-      )
-     )
-    )
-   )
-   (else
-    (ref.i31
-     (i32.const 0)
-    )
-   )
-  )
- )
- (func $main (type $21) (result anyref)
-  (local $user_o anyref)
+ (func $main (type $22) (result anyref)
+  (local $user_p anyref)
   (local $temp_0 (ref null $Object))
-  (local $user_i anyref)
-  (local $temp_1 anyref)
-  (local.set $user_o
+  (local $user_c anyref)
+  (local $temp_1 (ref null $Object))
+  (local $user_p2 anyref)
+  (local $temp_2 (ref null $Object))
+  (local $user_c2 anyref)
+  (local $temp_3 (ref null $Object))
+  (local $user_d anyref)
+  (local $temp_4 (ref null $Object))
+  (local.set $user_p
    (block (result (ref $Object))
     (call $set_storage
      (ref.as_non_null
@@ -646,7 +532,7 @@
      )
      (i32.const 0)
      (ref.i31
-      (i32.const 0)
+      (i32.const 10)
      )
     )
     (ref.as_non_null
@@ -654,72 +540,131 @@
     )
    )
   )
-  (local.set $user_i
+  (local.set $user_c
+   (block (result (ref $Object))
+    (local.set $temp_1
+     (call $new_object
+      (call $new_root_shape
+       (ref.cast (ref $Object)
+        (local.get $user_p)
+       )
+      )
+      (i32.const 0)
+     )
+    )
+    (ref.as_non_null
+     (local.get $temp_1)
+    )
+   )
+  )
+  (call $put_field
+   (ref.cast (ref $Object)
+    (local.get $user_c)
+   )
+   (i32.const 1)
    (ref.i31
+    (i32.const 20)
+   )
+  )
+  (call $console_log
+   (call $get_field_cached
+    (ref.cast (ref $Object)
+     (local.get $user_c)
+    )
+    (global.get $site_0)
     (i32.const 0)
    )
   )
-  (loop $continue
-   (block $break
-    (block
-     (br_if $break
-      (i32.eqz
-       (i31.get_s
-        (ref.cast (ref i31)
-         (call $less_than
-          (local.get $user_i)
-          (ref.i31
-           (i32.const 1000000)
-          )
-         )
-        )
-       )
-      )
-     )
-     (call $put_field
-      (ref.cast (ref $Object)
-       (local.get $user_o)
-      )
-      (i32.const 0)
-      (call $add_slow
-       (call $get_field_slow
-        (ref.cast (ref $Object)
-         (local.get $user_o)
-        )
-        (i32.const 0)
-       )
-       (ref.i31
+  (call $console_log
+   (call $get_field_cached
+    (ref.cast (ref $Object)
+     (local.get $user_c)
+    )
+    (global.get $site_1)
+    (i32.const 1)
+   )
+  )
+  (local.set $user_p2
+   (block (result (ref $Object))
+    (call $set_storage
+     (ref.as_non_null
+      (local.tee $temp_2
+       (call $new_object
+        (global.get $shape_literal_0)
         (i32.const 1)
        )
       )
      )
-     (drop
-      (block (result anyref)
-       (local.set $temp_1
-        (local.get $user_i)
-       )
-       (local.set $user_i
-        (call $add_slow
-         (local.get $temp_1)
-         (ref.i31
-          (i32.const 1)
-         )
-        )
-       )
-       (local.get $temp_1)
-      )
+     (i32.const 0)
+     (ref.i31
+      (i32.const 30)
      )
-     (br $continue)
+    )
+    (ref.as_non_null
+     (local.get $temp_2)
     )
    )
   )
-  (block (result nullref)
-   (call $console_log
-    (call $get_field_slow
-     (ref.cast (ref $Object)
-      (local.get $user_o)
+  (local.set $user_c2
+   (block (result (ref $Object))
+    (local.set $temp_3
+     (call $new_object
+      (call $new_root_shape
+       (ref.cast (ref $Object)
+        (local.get $user_p2)
+       )
+      )
+      (i32.const 0)
      )
-     (i32.const 0)
+    )
+    (ref.as_non_null
+     (local.get $temp_3)
+    )
+   )
+  )
+  (call $console_log
+   (call $get_field_cached
+    (ref.cast (ref $Object)
+     (local.get $user_c2)
+    )
+    (global.get $site_2)
+    (i32.const 0)
+   )
+  )
+  (local.set $user_d
+   (block (result (ref $Object))
+    (local.set $temp_4
+     (call $new_object
+      (call $new_root_shape
+       (ref.cast (ref $Object)
+        (local.get $user_c)
+       )
+      )
+      (i32.const 0)
+     )
+    )
+    (ref.as_non_null
+     (local.get $temp_4)
+    )
+   )
+  )
+  (call $console_log
+   (call $get_field_cached
+    (ref.cast (ref $Object)
+     (local.get $user_d)
+    )
+    (global.get $site_3)
+    (i32.const 0)
+   )
+  )
+  (block (result anyref)
+   (call $console_log
+    (call $get_field_cached
+     (ref.cast (ref $Object)
+      (local.get $user_d)
+     )
+     (global.get $site_4)
+     (i32.const 1)
     )
    )
    (ref.null none)

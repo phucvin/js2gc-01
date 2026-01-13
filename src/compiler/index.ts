@@ -11,7 +11,6 @@ export function compile(source: string, options?: CompilerOptions): string {
   // Default options
   const compilerOptions: CompilerOptions = {
       enableInlineCache: true,
-      enableStringRef: false,
       ...options
   };
 
@@ -64,7 +63,7 @@ export function compile(source: string, options?: CompilerOptions): string {
 
   if (globalCallSites.length > 0) {
       for (const siteName of globalCallSites) {
-          globalsDecl += `(global ${siteName} (mut (ref $CallSite)) (struct.new $CallSite (ref.null $Shape) (i32.const -1)))\n`;
+          globalsDecl += `(global ${siteName} (mut (ref $CallSite)) (struct.new $CallSite (ref.null $Shape) (i32.const -1) (ref.null any)))\n`;
       }
   }
 
@@ -98,6 +97,7 @@ export function compile(source: string, options?: CompilerOptions): string {
       (field $parent (ref null $Shape))
       (field $key i32)
       (field $offset i32)
+      (field $proto anyref)
     ))
 
     (type $Storage (array (mut anyref)))
@@ -110,6 +110,7 @@ export function compile(source: string, options?: CompilerOptions): string {
     ${enableInlineCache ? `(type $CallSite (struct
       (field $expected_shape (mut (ref null $Shape)))
       (field $offset (mut i32))
+      (field $holder (mut anyref))
     ))` : ''}
 
     (type $Closure (struct
@@ -152,11 +153,12 @@ export function compile(source: string, options?: CompilerOptions): string {
   )
   (start $runtime_init)
 
-  (func $new_root_shape (result (ref $Shape))
+  (func $new_root_shape (param $proto anyref) (result (ref $Shape))
     (struct.new $Shape
       (ref.null $Shape)
       (i32.const -1)
       (i32.const -1)
+      (local.get $proto)
     )
   )
 
@@ -165,6 +167,7 @@ export function compile(source: string, options?: CompilerOptions): string {
       (local.get $parent)
       (local.get $key)
       (local.get $offset)
+      (struct.get $Shape $proto (local.get $parent))
     )
   )
 
@@ -244,17 +247,46 @@ export function compile(source: string, options?: CompilerOptions): string {
 
   (func $get_field_resolve (param $obj (ref $Object)) (param $shape (ref $Shape)) ${enableInlineCache ? '(param $cache (ref $CallSite))' : ''} (param $key i32) (result anyref)
     (local $offset i32)
+    (local $curr_obj anyref)
+    (local $curr_shape (ref $Shape))
+    
+    (local.set $curr_obj (local.get $obj))
+    (local.set $curr_shape (local.get $shape))
 
-    (local.set $offset (call $lookup_in_shape (local.get $shape) (local.get $key)))
+    (loop $proto_chain
+       (local.set $offset (call $lookup_in_shape (local.get $curr_shape) (local.get $key)))
 
-    (if (i32.ge_s (local.get $offset) (i32.const 0))
-      (then
-        ${enableInlineCache ? `
-        (struct.set $CallSite $expected_shape (local.get $cache) (local.get $shape))
-        (struct.set $CallSite $offset (local.get $cache) (local.get $offset))
-        ` : ''}
-        (return (array.get $Storage (struct.get $Object $storage (local.get $obj)) (local.get $offset)))
-      )
+       (if (i32.ge_s (local.get $offset) (i32.const 0))
+         (then
+           ${enableInlineCache ? `
+           (struct.set $CallSite $expected_shape (local.get $cache) (local.get $shape))
+           (struct.set $CallSite $offset (local.get $cache) (local.get $offset))
+           ;; If $curr_obj is the same as $obj, holder is null (meaning 'own property')
+           ;; Otherwise holder is $curr_obj
+           ;; Note: ref.eq requires eqref. $curr_obj is anyref, but in our system all objects are eqref.
+           (if (ref.eq (ref.cast eqref (local.get $curr_obj)) (local.get $obj))
+               (then (struct.set $CallSite $holder (local.get $cache) (ref.null any)))
+               (else (struct.set $CallSite $holder (local.get $cache) (local.get $curr_obj)))
+           )
+           ` : ''}
+           (return (array.get $Storage (struct.get $Object $storage (ref.cast (ref $Object) (local.get $curr_obj))) (local.get $offset)))
+         )
+       )
+       
+       ;; Not found, check prototype
+       (local.set $curr_obj (struct.get $Shape $proto (local.get $curr_shape)))
+       (if (ref.is_null (local.get $curr_obj))
+          (then (return (ref.null any)))
+       )
+       ;; Only objects have shapes we can lookup in. 
+       ;; If prototype is not an object (e.g. null or primitive), we stop (null checked above).
+       ;; Assume prototype is always an Object for now (or cast will fail/trap if user messes with protos manually)
+       (if (ref.test (ref $Object) (local.get $curr_obj))
+          (then
+             (local.set $curr_shape (struct.get $Object $shape (ref.cast (ref $Object) (local.get $curr_obj))))
+             (br $proto_chain)
+          )
+       )
     )
     (ref.null any)
   )
@@ -270,6 +302,7 @@ export function compile(source: string, options?: CompilerOptions): string {
 
   ${enableInlineCache ? `(func $get_field_cached (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
     (local $shape (ref $Shape))
+    (local $holder anyref)
     (local.set $shape (struct.get $Object $shape (local.get $obj)))
 
     (if (ref.eq
@@ -277,10 +310,23 @@ export function compile(source: string, options?: CompilerOptions): string {
           (struct.get $CallSite $expected_shape (local.get $cache))
         )
       (then
-        (return (array.get $Storage
-          (struct.get $Object $storage (local.get $obj))
-          (struct.get $CallSite $offset (local.get $cache))
-        ))
+        (local.set $holder (struct.get $CallSite $holder (local.get $cache)))
+        (if (ref.is_null (local.get $holder))
+            (then
+                ;; Own property
+                (return (array.get $Storage
+                  (struct.get $Object $storage (local.get $obj))
+                  (struct.get $CallSite $offset (local.get $cache))
+                ))
+            )
+            (else
+                ;; Inherited property
+                (return (array.get $Storage
+                  (struct.get $Object $storage (ref.cast (ref $Object) (local.get $holder)))
+                  (struct.get $CallSite $offset (local.get $cache))
+                ))
+            )
+        )
       )
     )
     (call $get_field_resolve (local.get $obj) (local.get $shape) (local.get $cache) (local.get $key))
