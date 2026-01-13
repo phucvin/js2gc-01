@@ -28,13 +28,48 @@
  (import "env" "print_char" (func $print_char (type $9) (param i32)))
  (global $shape_literal_0 (ref $Shape) (struct.new $Shape
   (struct.new $Shape
-   (ref.null none)
-   (i32.const -1)
-   (i32.const -1)
+   (struct.new $Shape
+    (struct.new $Shape
+     (struct.new $Shape
+      (struct.new $Shape
+       (struct.new $Shape
+        (struct.new $Shape
+         (struct.new $Shape
+          (ref.null none)
+          (i32.const -1)
+          (i32.const -1)
+          (ref.null none)
+         )
+         (i32.const 0)
+         (i32.const 0)
+         (ref.null none)
+        )
+        (i32.const 1)
+        (i32.const 1)
+        (ref.null none)
+       )
+       (i32.const 2)
+       (i32.const 2)
+       (ref.null none)
+      )
+      (i32.const 3)
+      (i32.const 3)
+      (ref.null none)
+     )
+     (i32.const 4)
+     (i32.const 4)
+     (ref.null none)
+    )
+    (i32.const 5)
+    (i32.const 5)
+    (ref.null none)
+   )
+   (i32.const 6)
+   (i32.const 6)
    (ref.null none)
   )
-  (i32.const 0)
-  (i32.const 0)
+  (i32.const 7)
+  (i32.const 7)
   (ref.null none)
  ))
  (global $g_str_null (mut (ref null $String)) (ref.null none))
@@ -640,11 +675,74 @@
       (local.tee $temp_0
        (call $new_object
         (global.get $shape_literal_0)
-        (i32.const 1)
+        (i32.const 8)
        )
       )
      )
      (i32.const 0)
+     (ref.i31
+      (i32.const 1)
+     )
+    )
+    (call $set_storage
+     (ref.as_non_null
+      (local.get $temp_0)
+     )
+     (i32.const 1)
+     (ref.i31
+      (i32.const 2)
+     )
+    )
+    (call $set_storage
+     (ref.as_non_null
+      (local.get $temp_0)
+     )
+     (i32.const 2)
+     (ref.i31
+      (i32.const 3)
+     )
+    )
+    (call $set_storage
+     (ref.as_non_null
+      (local.get $temp_0)
+     )
+     (i32.const 3)
+     (ref.i31
+      (i32.const 4)
+     )
+    )
+    (call $set_storage
+     (ref.as_non_null
+      (local.get $temp_0)
+     )
+     (i32.const 4)
+     (ref.i31
+      (i32.const 5)
+     )
+    )
+    (call $set_storage
+     (ref.as_non_null
+      (local.get $temp_0)
+     )
+     (i32.const 5)
+     (ref.i31
+      (i32.const 6)
+     )
+    )
+    (call $set_storage
+     (ref.as_non_null
+      (local.get $temp_0)
+     )
+     (i32.const 6)
+     (ref.i31
+      (i32.const 7)
+     )
+    )
+    (call $set_storage
+     (ref.as_non_null
+      (local.get $temp_0)
+     )
+     (i32.const 7)
      (ref.i31
       (i32.const 0)
      )
@@ -680,13 +778,13 @@
       (ref.cast (ref $Object)
        (local.get $user_o)
       )
-      (i32.const 0)
+      (i32.const 7)
       (call $add_slow
        (call $get_field_slow
         (ref.cast (ref $Object)
          (local.get $user_o)
         )
-        (i32.const 0)
+        (i32.const 7)
        )
        (ref.i31
         (i32.const 1)
@@ -719,7 +817,7 @@
      (ref.cast (ref $Object)
       (local.get $user_o)
      )
-     (i32.const 0)
+     (i32.const 7)
     )
    )
    (ref.null none)
