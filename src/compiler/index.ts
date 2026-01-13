@@ -433,31 +433,58 @@ export function compile(source: string, options?: CompilerOptions): string {
       (local $t_rhs i32)
       (local $target (ref null $BinaryOpFunc))
 
-      (local.set $t_lhs (call $get_type_id (local.get $lhs)))
-      (local.set $t_rhs (call $get_type_id (local.get $rhs)))
-
-      ;; Default to add_unsupported
+      (local.set $t_lhs (i32.const 0))
+      (local.set $t_rhs (i32.const 0))
       (local.set $target (ref.func $add_unsupported))
 
-      (if (i32.eq (local.get $t_lhs) (i32.const 1)) ;; i31
-          (then
-              (if (i32.eq (local.get $t_rhs) (i32.const 1))
-                  (then (local.set $target (ref.func $add_i32_i32)))
-                  (else (if (i32.eq (local.get $t_rhs) (i32.const 2))
-                      (then (local.set $target (ref.func $add_i32_f64)))
-                  ))
-              )
+      (block $done
+        (block $lhs_not_i31 (result anyref)
+          (drop (br_on_cast_fail $lhs_not_i31 anyref (ref i31) (local.get $lhs)))
+          (local.set $t_lhs (i32.const 1))
+
+          (drop
+            (block $rhs_not_i31 (result anyref)
+              (drop (br_on_cast_fail $rhs_not_i31 anyref (ref i31) (local.get $rhs)))
+              (local.set $t_rhs (i32.const 1))
+              (local.set $target (ref.func $add_i32_i32))
+              (br $done)
+            )
           )
-          (else (if (i32.eq (local.get $t_lhs) (i32.const 2)) ;; f64
-              (then
-                  (if (i32.eq (local.get $t_rhs) (i32.const 1))
-                      (then (local.set $target (ref.func $add_f64_i32)))
-                      (else (if (i32.eq (local.get $t_rhs) (i32.const 2))
-                          (then (local.set $target (ref.func $add_f64_f64)))
-                      ))
-                  )
-              )
-          ))
+          (drop
+            (block $rhs_not_f64 (result anyref)
+              (drop (br_on_cast_fail $rhs_not_f64 anyref (ref $BoxedF64) (local.get $rhs)))
+              (local.set $t_rhs (i32.const 2))
+              (local.set $target (ref.func $add_i32_f64))
+              (br $done)
+            )
+          )
+          (br $done)
+        )
+        (drop)
+
+        (block $lhs_not_f64 (result anyref)
+          (drop (br_on_cast_fail $lhs_not_f64 anyref (ref $BoxedF64) (local.get $lhs)))
+          (local.set $t_lhs (i32.const 2))
+
+          (drop
+            (block $rhs_not_i31_2 (result anyref)
+              (drop (br_on_cast_fail $rhs_not_i31_2 anyref (ref i31) (local.get $rhs)))
+              (local.set $t_rhs (i32.const 1))
+              (local.set $target (ref.func $add_f64_i32))
+              (br $done)
+            )
+          )
+          (drop
+            (block $rhs_not_f64_2 (result anyref)
+              (drop (br_on_cast_fail $rhs_not_f64_2 anyref (ref $BoxedF64) (local.get $rhs)))
+              (local.set $t_rhs (i32.const 2))
+              (local.set $target (ref.func $add_f64_f64))
+              (br $done)
+            )
+          )
+          (br $done)
+        )
+        (drop)
       )
 
       ${enableInlineCache ? `
@@ -516,31 +543,58 @@ export function compile(source: string, options?: CompilerOptions): string {
       (local $t_rhs i32)
       (local $target (ref null $BinaryOpFunc))
 
-      (local.set $t_lhs (call $get_type_id (local.get $lhs)))
-      (local.set $t_rhs (call $get_type_id (local.get $rhs)))
-
-      ;; Default to sub_unsupported
+      (local.set $t_lhs (i32.const 0))
+      (local.set $t_rhs (i32.const 0))
       (local.set $target (ref.func $sub_unsupported))
 
-      (if (i32.eq (local.get $t_lhs) (i32.const 1)) ;; i31
-          (then
-              (if (i32.eq (local.get $t_rhs) (i32.const 1))
-                  (then (local.set $target (ref.func $sub_i32_i32)))
-                  (else (if (i32.eq (local.get $t_rhs) (i32.const 2))
-                      (then (local.set $target (ref.func $sub_i32_f64)))
-                  ))
-              )
+      (block $done
+        (block $lhs_not_i31 (result anyref)
+          (drop (br_on_cast_fail $lhs_not_i31 anyref (ref i31) (local.get $lhs)))
+          (local.set $t_lhs (i32.const 1))
+
+          (drop
+            (block $rhs_not_i31 (result anyref)
+              (drop (br_on_cast_fail $rhs_not_i31 anyref (ref i31) (local.get $rhs)))
+              (local.set $t_rhs (i32.const 1))
+              (local.set $target (ref.func $sub_i32_i32))
+              (br $done)
+            )
           )
-          (else (if (i32.eq (local.get $t_lhs) (i32.const 2)) ;; f64
-              (then
-                  (if (i32.eq (local.get $t_rhs) (i32.const 1))
-                      (then (local.set $target (ref.func $sub_f64_i32)))
-                      (else (if (i32.eq (local.get $t_rhs) (i32.const 2))
-                          (then (local.set $target (ref.func $sub_f64_f64)))
-                      ))
-                  )
-              )
-          ))
+          (drop
+            (block $rhs_not_f64 (result anyref)
+              (drop (br_on_cast_fail $rhs_not_f64 anyref (ref $BoxedF64) (local.get $rhs)))
+              (local.set $t_rhs (i32.const 2))
+              (local.set $target (ref.func $sub_i32_f64))
+              (br $done)
+            )
+          )
+          (br $done)
+        )
+        (drop)
+
+        (block $lhs_not_f64 (result anyref)
+          (drop (br_on_cast_fail $lhs_not_f64 anyref (ref $BoxedF64) (local.get $lhs)))
+          (local.set $t_lhs (i32.const 2))
+
+          (drop
+            (block $rhs_not_i31_2 (result anyref)
+              (drop (br_on_cast_fail $rhs_not_i31_2 anyref (ref i31) (local.get $rhs)))
+              (local.set $t_rhs (i32.const 1))
+              (local.set $target (ref.func $sub_f64_i32))
+              (br $done)
+            )
+          )
+          (drop
+            (block $rhs_not_f64_2 (result anyref)
+              (drop (br_on_cast_fail $rhs_not_f64_2 anyref (ref $BoxedF64) (local.get $rhs)))
+              (local.set $t_rhs (i32.const 2))
+              (local.set $target (ref.func $sub_f64_f64))
+              (br $done)
+            )
+          )
+          (br $done)
+        )
+        (drop)
       )
 
       ${enableInlineCache ? `
