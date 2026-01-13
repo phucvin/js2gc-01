@@ -64,7 +64,7 @@ export function compile(source: string, options?: CompilerOptions): string {
 
   if (globalCallSites.length > 0) {
       for (const siteName of globalCallSites) {
-          globalsDecl += `(global ${siteName} (mut (ref $CallSite)) (struct.new $CallSite (ref.null $Shape) (i32.const -1)))\n`;
+          globalsDecl += `(global ${siteName} (mut (ref $CallSite)) (struct.new $CallSite (ref.null $Shape) (i32.const -1) (ref.null $Object) (ref.null $Shape) (ref.null $Storage)))\n`;
       }
   }
 
@@ -110,7 +110,10 @@ export function compile(source: string, options?: CompilerOptions): string {
 
     ${enableInlineCache ? `(type $CallSite (struct
       (field $expected_shape (mut (ref null $Shape)))
-      (field $offset (mut i32))
+      (field $target_offset (mut i32))
+      (field $cached_proto (mut (ref null $Object)))
+      (field $proto_shape (mut (ref null $Shape)))
+      (field $target_storage (mut (ref null $Storage)))
     ))` : ''}
 
     (type $Closure (struct
@@ -248,37 +251,71 @@ export function compile(source: string, options?: CompilerOptions): string {
   )
 
   (func $get_field_resolve (param $obj (ref $Object)) (param $shape (ref $Shape)) ${enableInlineCache ? '(param $cache (ref null $CallSite))' : ''} (param $key i32) (result anyref)
+    (local $curr (ref null $Object))
     (local $offset i32)
-    (local $proto (ref null $Object))
 
-    (local.set $offset (call $lookup_in_shape (local.get $shape) (local.get $key)))
+    (local.set $curr (local.get $obj))
 
-    ${enableInlineCache ? `
-    (if (ref.is_null (local.get $cache))
-        (then)
-        (else
-           (struct.set $CallSite $expected_shape (local.get $cache) (local.get $shape))
-           (struct.set $CallSite $offset (local.get $cache) (local.get $offset))
+    (loop $l
+        (if (ref.is_null (local.get $curr))
+            (then (return (ref.null any)))
         )
-    )
-    ` : ''}
 
-    (if (i32.ge_s (local.get $offset) (i32.const 0))
-      (then
-        (return (array.get $Storage (struct.get $Object $storage (local.get $obj)) (local.get $offset)))
-      )
-    )
+        (local.set $offset (call $lookup_in_shape (struct.get $Object $shape (local.get $curr)) (local.get $key)))
 
-    ;; Inherited?
-    (local.set $proto (struct.get $Object $proto (local.get $obj)))
-    (if (ref.is_null (local.get $proto)) (then (return (ref.null any))))
+        (if (i32.ge_s (local.get $offset) (i32.const 0))
+            (then
+                ;; Found! Update cache if provided
+                ${enableInlineCache ? `
+                (if (ref.is_null (local.get $cache))
+                    (then)
+                    (else
+                        ;; Only cache if found in receiver or immediate proto (validity check constraint)
+                        (struct.set $CallSite $expected_shape (local.get $cache) (local.get $shape))
+                        (struct.set $CallSite $target_offset (local.get $cache) (local.get $offset))
 
-    (call $get_field_resolve
-        (ref.as_non_null (local.get $proto))
-        (struct.get $Object $shape (ref.as_non_null (local.get $proto)))
-        ${enableInlineCache ? '(ref.null $CallSite)' : ''}
-        (local.get $key)
+                        (if (ref.eq (local.get $curr) (local.get $obj))
+                            (then
+                                ;; Found in receiver
+                                (struct.set $CallSite $cached_proto (local.get $cache) (ref.null $Object))
+                                (struct.set $CallSite $proto_shape (local.get $cache) (ref.null $Shape))
+                                (struct.set $CallSite $target_storage (local.get $cache) (ref.null $Storage))
+                            )
+                            (else
+                                ;; Found in prototype
+                                ;; Optimization: Only cache if curr is immediate proto
+                                (if (ref.eq (local.get $curr) (struct.get $Object $proto (local.get $obj)))
+                                    (then
+                                        (struct.set $CallSite $cached_proto (local.get $cache) (local.get $curr))
+                                        (struct.set $CallSite $proto_shape (local.get $cache) (struct.get $Object $shape (local.get $curr)))
+                                        (struct.set $CallSite $target_storage (local.get $cache) (struct.get $Object $storage (local.get $curr)))
+                                    )
+                                    (else
+                                        ;; Deep inheritance - Clear cache (or don't optimize)
+                                        (struct.set $CallSite $cached_proto (local.get $cache) (ref.null $Object))
+                                        (struct.set $CallSite $proto_shape (local.get $cache) (ref.null $Shape))
+                                        (struct.set $CallSite $target_storage (local.get $cache) (ref.null $Storage))
+                                        ;; Mark as "Found but not cached" via offset? No, offset is valid for the current object logic
+                                        ;; Actually, if we set cached_proto to null but set offset, the fast path will think it's an OWN property!
+                                        ;; CRITICAL: We must invalidate the cache for deep inheritance or signal "miss".
+                                        ;; Setting expected_shape to null ensures next time we miss.
+                                        (struct.set $CallSite $expected_shape (local.get $cache) (ref.null $Shape))
+                                    )
+                                )
+                            )
+                        )
+                    )
+                )
+                ` : ''}
+
+                (return (array.get $Storage (struct.get $Object $storage (local.get $curr)) (local.get $offset)))
+            )
+        )
+
+        (local.set $curr (struct.get $Object $proto (local.get $curr)))
+        (br $l)
     )
+    (ref.null any)
   )
 
   (func $get_field_slow (param $obj (ref $Object)) ${enableInlineCache ? '(param $cache (ref $CallSite))' : ''} (param $key i32) (result anyref)
@@ -300,26 +337,38 @@ export function compile(source: string, options?: CompilerOptions): string {
           (struct.get $CallSite $expected_shape (local.get $cache))
         )
       (then
-        (if (i32.ge_s (struct.get $CallSite $offset (local.get $cache)) (i32.const 0))
+         (if (ref.is_null (struct.get $CallSite $cached_proto (local.get $cache)))
             (then
+                ;; Case: Own Property (or cache invalid/deep but we checked shape match above - wait)
+                ;; If expected_shape matches, and cached_proto is null, it assumes Own Property.
+                ;; But what if it was deep inheritance and we cleared cached_proto?
+                ;; In get_field_resolve, we set expected_shape to null if deep. So it wouldn't match here.
+
                 (return (array.get $Storage
                   (struct.get $Object $storage (local.get $obj))
-                  (struct.get $CallSite $offset (local.get $cache))
+                  (struct.get $CallSite $target_offset (local.get $cache))
                 ))
             )
             (else
-               ;; Cached miss. Delegate to proto immediately.
-               (local.set $proto (struct.get $Object $proto (local.get $obj)))
-               (if (ref.is_null (local.get $proto)) (then (return (ref.null any))))
+                ;; Case: Inherited Property (Immediate Proto)
+                (local.set $proto (struct.get $Object $proto (local.get $obj)))
 
-               (return (call $get_field_resolve
-                   (ref.as_non_null (local.get $proto))
-                   (struct.get $Object $shape (ref.as_non_null (local.get $proto)))
-                   (ref.null $CallSite)
-                   (local.get $key)
-               ))
+                (if (ref.eq (local.get $proto) (struct.get $CallSite $cached_proto (local.get $cache)))
+                    (then
+                       ;; Verify Proto Shape (validity check)
+                       (if (ref.eq (struct.get $Object $shape (local.get $proto)) (struct.get $CallSite $proto_shape (local.get $cache)))
+                          (then
+                              ;; Hit! Access Target Storage directly.
+                              (return (array.get $Storage
+                                 (struct.get $CallSite $target_storage (local.get $cache))
+                                 (struct.get $CallSite $target_offset (local.get $cache))
+                              ))
+                          )
+                       )
+                    )
+                )
             )
-        )
+         )
       )
     )
     (call $get_field_resolve (local.get $obj) (local.get $shape) (local.get $cache) (local.get $key))
