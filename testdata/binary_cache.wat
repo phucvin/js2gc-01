@@ -2,8 +2,8 @@
  (rec
   (type $Shape (struct (field $parent (ref null $Shape)) (field $key i32) (field $offset i32)))
   (type $Storage (array (mut anyref)))
-  (type $Object (struct (field $shape (mut (ref $Shape))) (field $storage (mut (ref $Storage)))))
-  (type $CallSite (struct (field $expected_shape (mut (ref null $Shape))) (field $offset (mut i32))))
+  (type $Object (struct (field $shape (mut (ref $Shape))) (field $storage (mut (ref $Storage))) (field $proto (mut (ref null $Object)))))
+  (type $CallSite (struct (field $expected_shape (mut (ref null $Shape))) (field $target_object (mut (ref null $Object))) (field $target_shape (mut (ref null $Shape))) (field $offset (mut i32))))
   (type $Closure (struct (field $func (ref func)) (field $env anyref)))
   (type $BinaryOpFunc (func (param anyref anyref) (result anyref)))
   (type $BinaryOpCallSite (struct (field $type_lhs (mut i32)) (field $type_rhs (mut i32)) (field $target (mut (ref null $BinaryOpFunc)))))
@@ -130,16 +130,28 @@
               (drop
                (block $object (result (ref $Object))
                 (drop
+                 (br_on_cast $i31 anyref (ref i31)
+                  (local.get $val)
+                 )
+                )
+                (drop
+                 (br_on_cast $boxed_i32 anyref (ref $BoxedI32)
+                  (local.get $val)
+                 )
+                )
+                (drop
+                 (br_on_cast $boxed_f64 anyref (ref $BoxedF64)
+                  (local.get $val)
+                 )
+                )
+                (drop
+                 (br_on_cast $string anyref (ref $String)
+                  (local.get $val)
+                 )
+                )
+                (drop
                  (br_on_cast $object anyref (ref $Object)
-                  (br_on_cast $string anyref (ref $String)
-                   (br_on_cast $boxed_f64 anyref (ref $BoxedF64)
-                    (br_on_cast $boxed_i32 anyref (ref $BoxedI32)
-                     (br_on_cast $i31 anyref (ref i31)
-                      (local.get $val)
-                     )
-                    )
-                   )
-                  )
+                  (local.get $val)
                  )
                 )
                 (return)

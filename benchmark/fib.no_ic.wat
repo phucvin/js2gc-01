@@ -2,7 +2,7 @@
  (rec
   (type $Shape (struct (field $parent (ref null $Shape)) (field $key i32) (field $offset i32)))
   (type $Storage (array (mut anyref)))
-  (type $Object (struct (field $shape (mut (ref $Shape))) (field $storage (mut (ref $Storage)))))
+  (type $Object (struct (field $shape (mut (ref $Shape))) (field $storage (mut (ref $Storage))) (field $proto (mut (ref null $Object)))))
   (type $Closure (struct (field $func (ref func)) (field $env anyref)))
   (type $BinaryOpFunc (func (param anyref anyref) (result anyref)))
  )
@@ -13,10 +13,10 @@
  (type $9 (func (param i32)))
  (type $10 (func (param f64)))
  (type $11 (func))
- (type $12 (func (param (ref $String))))
- (type $13 (func (param anyref)))
- (type $14 (func (param anyref) (result i32)))
- (type $15 (func (param anyref) (result anyref)))
+ (type $12 (func (param anyref) (result anyref)))
+ (type $13 (func (param (ref $String))))
+ (type $14 (func (param anyref)))
+ (type $15 (func (param anyref) (result i32)))
  (type $16 (func (result anyref)))
  (import "env" "print_i32" (func $print_i32 (type $9) (param i32)))
  (import "env" "print_f64" (func $print_f64 (type $10) (param f64)))
@@ -42,7 +42,7 @@
    )
   )
  )
- (func $print_string_helper (type $12) (param $str (ref $String))
+ (func $print_string_helper (type $13) (param $str (ref $String))
   (local $len i32)
   (local $i i32)
   (local.set $len
@@ -77,7 +77,7 @@
    )
   )
  )
- (func $console_log (type $13) (param $val anyref)
+ (func $console_log (type $14) (param $val anyref)
   (block $null
    (drop
     (br_on_null $null
@@ -98,16 +98,28 @@
               (drop
                (block $object (result (ref $Object))
                 (drop
+                 (br_on_cast $i31 anyref (ref i31)
+                  (local.get $val)
+                 )
+                )
+                (drop
+                 (br_on_cast $boxed_i32 anyref (ref $BoxedI32)
+                  (local.get $val)
+                 )
+                )
+                (drop
+                 (br_on_cast $boxed_f64 anyref (ref $BoxedF64)
+                  (local.get $val)
+                 )
+                )
+                (drop
+                 (br_on_cast $string anyref (ref $String)
+                  (local.get $val)
+                 )
+                )
+                (drop
                  (br_on_cast $object anyref (ref $Object)
-                  (br_on_cast $string anyref (ref $String)
-                   (br_on_cast $boxed_f64 anyref (ref $BoxedF64)
-                    (br_on_cast $boxed_i32 anyref (ref $BoxedI32)
-                     (br_on_cast $i31 anyref (ref i31)
-                      (local.get $val)
-                     )
-                    )
-                   )
-                  )
+                  (local.get $val)
                  )
                 )
                 (return)
@@ -150,7 +162,7 @@
    (i32.const 10)
   )
  )
- (func $get_type_id (type $14) (param $val anyref) (result i32)
+ (func $get_type_id (type $15) (param $val anyref) (result i32)
   (if
    (ref.is_null
     (local.get $val)
@@ -543,7 +555,7 @@
    )
   )
  )
- (func $fib (type $15) (param $user_n anyref) (result anyref)
+ (func $fib (type $12) (param $user_n anyref) (result anyref)
   (if
    (i31.get_s
     (ref.cast (ref i31)

@@ -2,8 +2,8 @@
  (rec
   (type $Shape (struct (field $parent (ref null $Shape)) (field $key i32) (field $offset i32)))
   (type $Storage (array (mut anyref)))
-  (type $Object (struct (field $shape (mut (ref $Shape))) (field $storage (mut (ref $Storage)))))
-  (type $CallSite (struct (field $expected_shape (mut (ref null $Shape))) (field $offset (mut i32))))
+  (type $Object (struct (field $shape (mut (ref $Shape))) (field $storage (mut (ref $Storage))) (field $proto (mut (ref null $Object)))))
+  (type $CallSite (struct (field $expected_shape (mut (ref null $Shape))) (field $target_object (mut (ref null $Object))) (field $target_shape (mut (ref null $Shape))) (field $offset (mut i32))))
   (type $Closure (struct (field $func (ref func)) (field $env anyref)))
   (type $BinaryOpFunc (func (param anyref anyref) (result anyref)))
   (type $BinaryOpCallSite (struct (field $type_lhs (mut i32)) (field $type_rhs (mut i32)) (field $target (mut (ref null $BinaryOpFunc)))))
@@ -11,17 +11,21 @@
  (type $ClosureSig0 (func (param anyref anyref) (result anyref)))
  (type $String (array (mut i8)))
  (type $9 (func))
- (type $10 (func (param (ref $Shape) i32) (result (ref $Object))))
+ (type $10 (func (param (ref $Shape) i32 (ref null $Object)) (result (ref $Object))))
  (type $11 (func (param (ref $Object) i32 anyref)))
  (type $12 (func (param (ref $Shape) i32) (result i32)))
- (type $13 (func (param (ref $Object) (ref $Shape) (ref $CallSite) i32) (result anyref)))
+ (type $13 (func (param (ref $Object) (ref $Object) (ref $CallSite) i32) (result anyref)))
  (type $14 (func (param (ref $Object) (ref $CallSite) i32) (result anyref)))
  (type $15 (func (result anyref)))
  (global $site_0 (mut (ref $CallSite)) (struct.new $CallSite
   (ref.null none)
+  (ref.null none)
+  (ref.null none)
   (i32.const -1)
  ))
  (global $site_1 (mut (ref $CallSite)) (struct.new $CallSite
+  (ref.null none)
+  (ref.null none)
   (ref.null none)
   (i32.const -1)
  ))
@@ -91,12 +95,13 @@
    )
   )
  )
- (func $new_object (type $10) (param $shape (ref $Shape)) (param $size i32) (result (ref $Object))
+ (func $new_object (type $10) (param $shape (ref $Shape)) (param $size i32) (param $proto (ref null $Object)) (result (ref $Object))
   (struct.new $Object
    (local.get $shape)
    (array.new_default $Storage
     (local.get $size)
    )
+   (local.get $proto)
   )
  )
  (func $set_storage (type $11) (param $obj (ref $Object)) (param $idx i32) (param $val anyref)
@@ -150,8 +155,15 @@
   )
   (i32.const -1)
  )
- (func $get_field_resolve (type $13) (param $obj (ref $Object)) (param $shape (ref $Shape)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
+ (func $get_field_resolve (type $13) (param $receiver (ref $Object)) (param $current_obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
   (local $offset i32)
+  (local $shape (ref $Shape))
+  (local $proto (ref null $Object))
+  (local.set $shape
+   (struct.get $Object $shape
+    (local.get $current_obj)
+   )
+  )
   (local.set $offset
    (call $lookup_in_shape
     (local.get $shape)
@@ -166,6 +178,16 @@
    (then
     (struct.set $CallSite $expected_shape
      (local.get $cache)
+     (struct.get $Object $shape
+      (local.get $receiver)
+     )
+    )
+    (struct.set $CallSite $target_object
+     (local.get $cache)
+     (local.get $current_obj)
+    )
+    (struct.set $CallSite $target_shape
+     (local.get $cache)
      (local.get $shape)
     )
     (struct.set $CallSite $offset
@@ -175,17 +197,48 @@
     (return
      (array.get $Storage
       (struct.get $Object $storage
-       (local.get $obj)
+       (local.get $current_obj)
       )
       (local.get $offset)
      )
     )
    )
   )
-  (ref.null none)
+  (local.set $proto
+   (struct.get $Object $proto
+    (local.get $current_obj)
+   )
+  )
+  (if
+   (ref.is_null
+    (local.get $proto)
+   )
+   (then
+    (return
+     (ref.null none)
+    )
+   )
+  )
+  (call $get_field_resolve
+   (local.get $receiver)
+   (ref.as_non_null
+    (local.get $proto)
+   )
+   (local.get $cache)
+   (local.get $key)
+  )
+ )
+ (func $get_field_slow (type $14) (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
+  (call $get_field_resolve
+   (local.get $obj)
+   (local.get $obj)
+   (local.get $cache)
+   (local.get $key)
+  )
  )
  (func $get_field_cached (type $14) (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
   (local $shape (ref $Shape))
+  (local $target_obj (ref null $Object))
   (local.set $shape
    (struct.get $Object $shape
     (local.get $obj)
@@ -199,21 +252,48 @@
     )
    )
    (then
-    (return
-     (array.get $Storage
-      (struct.get $Object $storage
-       (local.get $obj)
+    (local.set $target_obj
+     (struct.get $CallSite $target_object
+      (local.get $cache)
+     )
+    )
+    (block $label
+     (br_if $label
+      (ref.is_null
+       (local.get $target_obj)
       )
-      (struct.get $CallSite $offset
+     )
+    )
+    (if
+     (ref.eq
+      (struct.get $Object $shape
+       (ref.as_non_null
+        (local.get $target_obj)
+       )
+      )
+      (struct.get $CallSite $target_shape
        (local.get $cache)
+      )
+     )
+     (then
+      (return
+       (array.get $Storage
+        (struct.get $Object $storage
+         (ref.as_non_null
+          (local.get $target_obj)
+         )
+        )
+        (struct.get $CallSite $offset
+         (local.get $cache)
+        )
+       )
       )
      )
     )
    )
   )
-  (call $get_field_resolve
+  (call $get_field_slow
    (local.get $obj)
-   (local.get $shape)
    (local.get $cache)
    (local.get $key)
   )
@@ -240,6 +320,7 @@
    (call $new_object
     (global.get $shape_literal_0)
     (i32.const 0)
+    (ref.null none)
    )
   )
   (local.set $user_one
@@ -250,6 +331,7 @@
        (call $new_object
         (global.get $shape_literal_1)
         (i32.const 1)
+        (ref.null none)
        )
       )
      )
@@ -271,6 +353,7 @@
        (call $new_object
         (global.get $shape_literal_2)
         (i32.const 2)
+        (ref.null none)
        )
       )
      )
@@ -299,6 +382,7 @@
     (call $new_object
      (global.get $shape_literal_0)
      (i32.const 0)
+     (ref.null none)
     )
    )
   )
@@ -334,6 +418,7 @@
        (call $new_object
         (global.get $shape_literal_3)
         (i32.const 1)
+        (ref.null none)
        )
       )
      )
@@ -373,6 +458,7 @@
        (call $new_object
         (global.get $shape_literal_4)
         (i32.const 1)
+        (ref.null none)
        )
       )
      )
@@ -382,6 +468,7 @@
       (call $new_object
        (global.get $shape_literal_0)
        (i32.const 0)
+       (ref.null none)
       )
      )
     )

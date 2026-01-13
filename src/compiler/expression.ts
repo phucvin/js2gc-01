@@ -69,7 +69,7 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
         let envAccess;
         if (offset === 0) {
              // We must use ref.as_non_null because local.tee returns the type of the local (nullable).
-             envAccess = `(ref.as_non_null (local.tee ${envLocal} (call $new_object ${envCreationCode} (i32.const ${totalCaptured}))))`;
+             envAccess = `(ref.as_non_null (local.tee ${envLocal} (call $new_object ${envCreationCode} (i32.const ${totalCaptured}) (ref.null $Object))))`;
         } else {
              envAccess = `(ref.as_non_null (local.get ${envLocal}))`;
         }
@@ -106,7 +106,7 @@ function compileFunctionExpression(node: ts.FunctionExpression | ts.ArrowFunctio
     registerGeneratedFunction(`(elem declare func $${funcName})`);
 
     if (totalCaptured === 0) {
-        return `(struct.new $Closure (ref.func $${funcName}) (call $new_object ${envCreationCode} (i32.const 0)))`;
+        return `(struct.new $Closure (ref.func $${funcName}) (call $new_object ${envCreationCode} (i32.const 0) (ref.null $Object)))`;
     }
 
     return `(block (result (ref $Closure))
@@ -192,7 +192,7 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
 
       const totalProps = propNames.length;
       if (totalProps === 0) {
-          const code = `(call $new_object ${shapeCode} (i32.const 0))`;
+          const code = `(call $new_object ${shapeCode} (i32.const 0) (ref.null $Object))`;
           return dropResult ? `(drop ${code})` : code;
       }
 
@@ -208,7 +208,7 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
               if (offset === 0) {
                    // We must use ref.as_non_null because local.tee returns the type of the local (nullable),
                    // but set_storage expects a non-nullable reference.
-                   objAccess = `(ref.as_non_null (local.tee ${objLocal} (call $new_object ${shapeCode} (i32.const ${totalProps}))))`;
+                   objAccess = `(ref.as_non_null (local.tee ${objLocal} (call $new_object ${shapeCode} (i32.const ${totalProps}) (ref.null $Object))))`;
               } else {
                    objAccess = `(ref.as_non_null (local.get ${objLocal}))`;
               }
@@ -225,6 +225,16 @@ function compileExpressionValue(expr: ts.Expression, ctx: CompilationContext, dr
       return dropResult ? `(drop ${code})` : code;
 
   } else if (ts.isCallExpression(expr)) {
+      // Handle Object.create specifically
+      if (ts.isPropertyAccessExpression(expr.expression) &&
+          ts.isIdentifier(expr.expression.expression) &&
+          expr.expression.expression.text === 'Object' &&
+          expr.expression.name.text === 'create') {
+          const proto = expr.arguments.length > 0 ? compileExpression(expr.arguments[0], ctx) : '(ref.null any)';
+          const code = `(call $object_create ${proto})`;
+          return fallback(code);
+      }
+
       // Direct console.log is handled in compileExpression wrapper.
       if (ts.isIdentifier(expr.expression)) {
           const funcName = expr.expression.text;

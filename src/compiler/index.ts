@@ -64,7 +64,7 @@ export function compile(source: string, options?: CompilerOptions): string {
 
   if (globalCallSites.length > 0) {
       for (const siteName of globalCallSites) {
-          globalsDecl += `(global ${siteName} (mut (ref $CallSite)) (struct.new $CallSite (ref.null $Shape) (i32.const -1)))\n`;
+          globalsDecl += `(global ${siteName} (mut (ref $CallSite)) (struct.new $CallSite (ref.null $Shape) (ref.null $Object) (ref.null $Shape) (i32.const -1)))\n`;
       }
   }
 
@@ -105,10 +105,13 @@ export function compile(source: string, options?: CompilerOptions): string {
     (type $Object (struct
       (field $shape (mut (ref $Shape)))
       (field $storage (mut (ref $Storage)))
+      (field $proto (mut (ref null $Object)))
     ))
 
     ${enableInlineCache ? `(type $CallSite (struct
       (field $expected_shape (mut (ref null $Shape)))
+      (field $target_object (mut (ref null $Object)))
+      (field $target_shape (mut (ref null $Shape)))
       (field $offset (mut i32))
     ))` : ''}
 
@@ -138,6 +141,7 @@ export function compile(source: string, options?: CompilerOptions): string {
 
   (elem declare func $add_i32_i32 $add_f64_f64 $add_i32_f64 $add_f64_i32 $add_unsupported)
   (elem declare func $sub_i32_i32 $sub_f64_f64 $sub_i32_f64 $sub_f64_i32 $sub_unsupported)
+  (elem declare func $set_prototype $object_create)
 
   ${globalsDecl}
   ${dataSegmentsDecl}
@@ -151,6 +155,15 @@ export function compile(source: string, options?: CompilerOptions): string {
     (global.set $g_str_obj (array.new_data $String ${objData} (i32.const 0) (i32.const 15)))
   )
   (start $runtime_init)
+
+  (func $set_prototype (param $obj anyref) (param $proto anyref) (result anyref)
+    (struct.set $Object $proto (ref.cast (ref $Object) (local.get $obj)) (ref.cast (ref $Object) (local.get $proto)))
+    (local.get $obj)
+  )
+
+  (func $object_create (param $proto anyref) (result anyref)
+    (call $new_object (call $new_root_shape) (i32.const 0) (ref.cast (ref null $Object) (local.get $proto)))
+  )
 
   (func $new_root_shape (result (ref $Shape))
     (struct.new $Shape
@@ -168,10 +181,11 @@ export function compile(source: string, options?: CompilerOptions): string {
     )
   )
 
-  (func $new_object (param $shape (ref $Shape)) (param $size i32) (result (ref $Object))
+  (func $new_object (param $shape (ref $Shape)) (param $size i32) (param $proto (ref null $Object)) (result (ref $Object))
     (struct.new $Object
       (local.get $shape)
       (array.new_default $Storage (local.get $size))
+      (local.get $proto)
     )
   )
 
@@ -194,11 +208,11 @@ export function compile(source: string, options?: CompilerOptions): string {
 
     (if (i32.ne (local.get $offset) (i32.const -1))
       (then
-        ;; Field exists, just update storage
+        ;; Field exists in OWN storage, just update
         (array.set $Storage (struct.get $Object $storage (local.get $obj)) (local.get $offset) (local.get $val))
       )
       (else
-        ;; Field does not exist, extend shape
+        ;; Field does not exist in OWN storage, extend shape (shadowing prototype if necessary)
         ;; 1. Calculate new offset (current storage length)
         (local.set $old_storage (struct.get $Object $storage (local.get $obj)))
         (local.set $old_len (array.len (local.get $old_storage)))
@@ -242,27 +256,39 @@ export function compile(source: string, options?: CompilerOptions): string {
     (i32.const -1)
   )
 
-  (func $get_field_resolve (param $obj (ref $Object)) (param $shape (ref $Shape)) ${enableInlineCache ? '(param $cache (ref $CallSite))' : ''} (param $key i32) (result anyref)
+  (func $get_field_resolve (param $receiver (ref $Object)) (param $current_obj (ref $Object)) ${enableInlineCache ? '(param $cache (ref $CallSite))' : ''} (param $key i32) (result anyref)
     (local $offset i32)
+    (local $shape (ref $Shape))
+    (local $proto (ref null $Object))
 
+    (local.set $shape (struct.get $Object $shape (local.get $current_obj)))
     (local.set $offset (call $lookup_in_shape (local.get $shape) (local.get $key)))
 
     (if (i32.ge_s (local.get $offset) (i32.const 0))
       (then
         ${enableInlineCache ? `
-        (struct.set $CallSite $expected_shape (local.get $cache) (local.get $shape))
+        (struct.set $CallSite $expected_shape (local.get $cache) (struct.get $Object $shape (local.get $receiver)))
+        (struct.set $CallSite $target_object (local.get $cache) (local.get $current_obj))
+        (struct.set $CallSite $target_shape (local.get $cache) (local.get $shape))
         (struct.set $CallSite $offset (local.get $cache) (local.get $offset))
         ` : ''}
-        (return (array.get $Storage (struct.get $Object $storage (local.get $obj)) (local.get $offset)))
+        (return (array.get $Storage (struct.get $Object $storage (local.get $current_obj)) (local.get $offset)))
       )
     )
-    (ref.null any)
+
+    ;; Not found in current object, check prototype
+    (local.set $proto (struct.get $Object $proto (local.get $current_obj)))
+    (if (ref.is_null (local.get $proto))
+      (then (return (ref.null any)))
+    )
+
+    (call $get_field_resolve (local.get $receiver) (ref.as_non_null (local.get $proto)) ${enableInlineCache ? '(local.get $cache)' : ''} (local.get $key))
   )
 
   (func $get_field_slow (param $obj (ref $Object)) ${enableInlineCache ? '(param $cache (ref $CallSite))' : ''} (param $key i32) (result anyref)
     (call $get_field_resolve
         (local.get $obj)
-        (struct.get $Object $shape (local.get $obj))
+        (local.get $obj)
         ${enableInlineCache ? '(local.get $cache)' : ''}
         (local.get $key)
     )
@@ -270,6 +296,7 @@ export function compile(source: string, options?: CompilerOptions): string {
 
   ${enableInlineCache ? `(func $get_field_cached (param $obj (ref $Object)) (param $cache (ref $CallSite)) (param $key i32) (result anyref)
     (local $shape (ref $Shape))
+    (local $target_obj (ref null $Object))
     (local.set $shape (struct.get $Object $shape (local.get $obj)))
 
     (if (ref.eq
@@ -277,13 +304,24 @@ export function compile(source: string, options?: CompilerOptions): string {
           (struct.get $CallSite $expected_shape (local.get $cache))
         )
       (then
-        (return (array.get $Storage
-          (struct.get $Object $storage (local.get $obj))
-          (struct.get $CallSite $offset (local.get $cache))
-        ))
+        ;; Receiver shape matches. Now check if target object is still valid.
+        (local.set $target_obj (struct.get $CallSite $target_object (local.get $cache)))
+        (if (ref.is_null (local.get $target_obj)) (then (br 0)))
+
+        (if (ref.eq
+              (struct.get $Object $shape (ref.as_non_null (local.get $target_obj)))
+              (struct.get $CallSite $target_shape (local.get $cache))
+            )
+          (then
+            (return (array.get $Storage
+              (struct.get $Object $storage (ref.as_non_null (local.get $target_obj)))
+              (struct.get $CallSite $offset (local.get $cache))
+            ))
+          )
+        )
       )
     )
-    (call $get_field_resolve (local.get $obj) (local.get $shape) (local.get $cache) (local.get $key))
+    (call $get_field_slow (local.get $obj) (local.get $cache) (local.get $key))
   )` : ''}
 
   (func $print_string_helper (param $str (ref $String))
@@ -310,16 +348,20 @@ export function compile(source: string, options?: CompilerOptions): string {
         (block $boxed_i32 (result (ref $BoxedI32))
           (block $boxed_f64 (result (ref $BoxedF64))
             (block $string (result (ref $String))
-               (block $object (result (ref $Object))
-                  (local.get $val)
-                  (br_on_cast $i31 anyref (ref i31))
-                  (br_on_cast $boxed_i32 anyref (ref $BoxedI32))
-                  (br_on_cast $boxed_f64 anyref (ref $BoxedF64))
-                  (br_on_cast $string anyref (ref $String))
-                  (br_on_cast $object anyref (ref $Object))
-                  drop
-                  return
-               )
+                (block $object (result (ref $Object))
+                   (local.get $val)
+                   (br_on_cast $i31 anyref (ref i31))
+                   (local.get $val)
+                   (br_on_cast $boxed_i32 anyref (ref $BoxedI32))
+                   (local.get $val)
+                   (br_on_cast $boxed_f64 anyref (ref $BoxedF64))
+                   (local.get $val)
+                   (br_on_cast $string anyref (ref $String))
+                   (local.get $val)
+                   (br_on_cast $object anyref (ref $Object))
+                   return
+                )
+
                drop
                (call $print_string_helper (ref.as_non_null (global.get $g_str_obj)))
                (call $print_char (i32.const 10))
