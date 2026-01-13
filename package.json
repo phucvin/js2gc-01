@@ -5,7 +5,9 @@
   "main": "index.js",
   "scripts": {
     "test": "ts-node --esm scripts/run_testdata.ts",
-    "benchmark": "ts-node --esm scripts/run_benchmark.ts"
+    "benchmark": "ts-node --esm scripts/run_benchmark.ts",
+    "lint": "eslint . --ext .ts",
+    "format": "prettier --write ."
   },
   "repository": {
     "type": "git",
@@ -25,5 +27,11 @@
     "esbuild": "^0.27.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+      "eslint": "^8.0.0",
+      "prettier": "^3.0.0",
+      "@typescript-eslint/parser": "^6.0.0",
+      "@typescript-eslint/eslint-plugin": "^6.0.0"
   }
 }

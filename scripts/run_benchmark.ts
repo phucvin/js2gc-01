@@ -2,11 +2,13 @@ import ts from 'typescript';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import { compile } from '../src/compiler.ts';
 import { performance } from 'perf_hooks';
+import { findFiles, compileToWat, createWasmModule, runWasm } from './utils.ts';
+import binaryen from 'binaryen'; // Still need for types if used explicitly
 
-// Dynamic import for binaryen
-const binaryenPromise = import('binaryen');
+// Dynamic import for binaryen if needed, but utils uses it.
+// If we use utils, we don't need direct import of binaryen unless we use types or constants not exposed.
+// We used binaryen.Features in utils.
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -24,51 +26,18 @@ interface BenchmarkResult {
 }
 
 async function runBenchmark() {
-    const binaryen = (await binaryenPromise).default;
-    const files = fs.readdirSync(benchmarkDir);
-    const jsFiles = files.filter(f => f.endsWith('.js'));
+    const files = findFiles(benchmarkDir, '.js');
 
-    console.log(`Found ${jsFiles.length} JS benchmarks in ${benchmarkDir}:`, jsFiles);
+    console.log(`Found ${files.length} JS benchmarks in ${benchmarkDir}:`, files);
 
     const results: BenchmarkResult[] = [];
 
-    for (const file of jsFiles) {
+    for (const file of files) {
         console.log(`\n--- Benchmarking ${file} ---`);
         const filePath = path.join(benchmarkDir, file);
         const jsSource = fs.readFileSync(filePath, 'utf-8');
 
-        // Measure JS execution (using eval/new Function or external node process?)
-        // For accurate JIT comparison, we should probably run in a separate process or loop.
-        // But for simplicity, we'll use a loop here.
-        // Wait, fib.js might take time.
-        // We'll run it once for now.
-        // Ideally we should use the same harness.
-        // But let's just use `eval` for a rough JS baseline if possible, or skip JS measurement if complex.
-        // `fib.js` calls `fib(30)` or similar?
-        // Let's modify the benchmark files to export a `run` function or similar?
-        // Current `fib.js` calls `fib(15)` at top level?
-        // Let's inspect `fib.js`.
-
-        // Actually, the previous implementation ran `node benchmark/fib.js`?
-        // No, we are building a runner.
-
-        // Let's measure JS time by running it as a script.
-        // We can use `vm` module or just `require` (if it exports main).
-        // `benchmark/fib.js`: `console.log(fib(15))`
-
         let jsDuration = 0;
-        const startJS = performance.now();
-        // Since we are in ESM, we can import it?
-        // But we want to run it fresh.
-        // Let's use `child_process` to run node?
-        // Or just eval the code?
-        // The code has `console.log`.
-        // Let's wrap it in a function.
-        // Or just run it.
-        // For now, let's skip precise JS benchmarking inside this script if it's tricky,
-        // but `run_benchmark.ts` output shows "JS Best Duration".
-
-        // Let's try to run it via `node`.
         const { execSync } = await import('child_process');
         try {
              // Run with node
@@ -87,7 +56,7 @@ async function runBenchmark() {
             console.log(`Compiling to WAT (IC: ${enableIC})...`);
             let watText = "";
             try {
-                watText = compile(jsSource, { enableInlineCache: enableIC });
+                watText = compileToWat(jsSource, { enableInlineCache: enableIC });
             } catch (e) {
                 console.error(`Compilation failed for ${file} (IC: ${enableIC}):`, e);
                 return "Error";
@@ -97,27 +66,17 @@ async function runBenchmark() {
             fs.writeFileSync(watPath, watText);
 
             let binary: Uint8Array;
-            const module = binaryen.parseText(watText);
+            let module: binaryen.Module | undefined;
 
             try {
-                module.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes | binaryen.Features.BulkMemory); // Added BulkMemory
-
-                if (!module.validate()) {
-                    console.error(`Validation failed for ${file} (IC: ${enableIC})`);
-                    module.dispose();
-                    return "Error";
-                }
-
-                // Optimize?
-                // module.optimize();
-
-                binary = module.emitBinary();
+                const result = await createWasmModule(watText);
+                module = result.module;
+                binary = result.binary;
             } catch(e) {
                  console.error(`Binaryen processing failed: ${e}`);
-                 module.dispose();
                  return "Error";
             } finally {
-                module.dispose();
+                if (module) module.dispose();
             }
 
             const wasmPath = path.join(benchmarkDir, `${file.replace('.js', '')}.${enableIC ? 'ic' : 'no_ic'}.wasm`);
@@ -125,7 +84,6 @@ async function runBenchmark() {
 
             // Execute Wasm
             try {
-                const compiled = await WebAssembly.compile(binary as any);
                 const imports = {
                     env: {
                         print_i32: () => {},
@@ -135,7 +93,7 @@ async function runBenchmark() {
                 };
 
                 const start = performance.now();
-                const instance = await WebAssembly.instantiate(compiled, imports);
+                const instance = await runWasm(binary, imports);
                 const main = instance.exports.main as () => void;
                 main();
                 const duration = performance.now() - start;

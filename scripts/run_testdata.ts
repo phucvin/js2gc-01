@@ -2,7 +2,7 @@ import binaryen from 'binaryen';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
-import { compile } from '../src/compiler.ts';
+import { findFiles, compileToWat, createWasmModule, runWasm, getPrintImports } from './utils.ts';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -10,13 +10,12 @@ const projectRoot = path.resolve(__dirname, '..');
 const testDataDir = path.join(projectRoot, 'testdata');
 
 async function run() {
-    const files = fs.readdirSync(testDataDir);
-    // Exclude run.ts and run.js
-    const jsFiles = files.filter(f => f.endsWith('.js') && f !== 'run.js' && f !== 'run.ts');
+    // Exclude run.ts and run.js if they exist (though findFiles filters by ext, we need to filter names)
+    const files = findFiles(testDataDir, '.js').filter(f => f !== 'run.js');
 
-    console.log(`Found ${jsFiles.length} JS examples in ${testDataDir}:`, jsFiles);
+    console.log(`Found ${files.length} JS examples in ${testDataDir}:`, files);
 
-    for (const file of jsFiles) {
+    for (const file of files) {
         console.log(`\n--- Processing ${file} ---`);
         const filePath = path.join(testDataDir, file);
         const jsSource = fs.readFileSync(filePath, 'utf-8');
@@ -24,7 +23,7 @@ async function run() {
         console.log("Compiling to WAT...");
         let watText = "";
         try {
-            watText = compile(jsSource);
+            watText = compileToWat(jsSource);
         } catch (e) {
              console.error(`Compilation failed for ${file}:`, e);
              process.exit(1);
@@ -35,36 +34,29 @@ async function run() {
         console.log(`WAT written to ${watPath}`);
 
         console.log("Parsing WAT with Binaryen...");
-        const module = binaryen.parseText(watText);
+        let module: binaryen.Module;
+        let binary: Uint8Array;
 
-        console.log("Setting features (GC | ReferenceTypes | BulkMemory)...");
-        module.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes | binaryen.Features.BulkMemory);
-
-        if (!module.validate()) {
-            console.error(`Validation failed for ${file}`);
-            process.exit(1);
+        try {
+            const result = await createWasmModule(watText);
+            module = result.module;
+            binary = result.binary;
+        } catch (e) {
+             console.error(`Binaryen processing failed for ${file}:`, e);
+             process.exit(1);
         }
-
-        const binary = module.emitBinary();
-        module.dispose();
 
         const wasmPath = path.join(testDataDir, `${file.replace(/\.js$/, '.wasm')}`);
         fs.writeFileSync(wasmPath, binary);
         console.log(`WASM written to ${wasmPath}`);
 
+        module.dispose();
+
         try {
-            const compiled = await WebAssembly.compile(binary as any);
-
             let output = "";
-            const imports = {
-                env: {
-                    print_i32: (val: number) => { output += val + "\n"; },
-                    print_f64: (val: number) => { output += val + "\n"; },
-                    print_char: (val: number) => { output += String.fromCharCode(val); },
-                }
-            };
+            const imports = getPrintImports((str) => output += str);
 
-            const instance = await WebAssembly.instantiate(compiled, imports);
+            const instance = await runWasm(binary, imports);
 
             const main = instance.exports.main as () => void;
 
@@ -74,11 +66,6 @@ async function run() {
                 console.error(`Example ${file} does not export a 'main' function.`);
                 continue;
             }
-
-            // Trim trailing newline if needed, or keep it. JS console.log adds newline.
-            // My print helpers add newline in this variable accumulation.
-            // Let's remove the last newline to match typical file output expectations if convenient,
-            // but usually `*.out` files have a trailing newline.
 
             console.log(`Execution output:\n${output}`);
 
