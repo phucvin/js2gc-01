@@ -4,7 +4,8 @@
   "description": "Compile JS to Wasm GC - Prototype 01",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "ts-node --esm scripts/run_testdata.ts",
+    "benchmark": "ts-node --esm scripts/run_benchmark.ts"
   },
   "repository": {
     "type": "git",

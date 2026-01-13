@@ -17,42 +17,24 @@ The compiler is located in `src/compiler.ts`. It exports a `compile` function th
 
 To run the tests:
 
-1.  Compile the TypeScript files and run the test runner:
+```bash
+npm test
+```
 
-    ```bash
-    node node_modules/ts-node/dist/bin.js scripts/run_testdata.ts
-    ```
-
-    The runner will:
-    -   Scan `testdata/` for `.js` files.
-    -   Compile each file to WAT.
-    -   Use `binaryen` to convert WAT to Wasm binary.
-    -   Execute the Wasm binary.
-    -   Write the output to `.out` files in `testdata/`.
+The runner will:
+-   Scan `testdata/` for `.js` files.
+-   Compile each file to WAT.
+-   Use `binaryen` to convert WAT to Wasm binary.
+-   Execute the Wasm binary.
+-   Write the output to `.out` files in `testdata/`.
 
 ## Benchmarks
 
 To run benchmarks:
 
-1.  Build the benchmark runner:
-
-    ```bash
-    node scripts/build_benchmark.js
-    ```
-
-    This creates a self-contained `bench_runner.js` file.
-
-2.  Run the benchmark:
-
-    ```bash
-    node bench_runner.js
-    ```
-
-    To run in JIT-less mode (skips WebAssembly):
-
-    ```bash
-    node --jitless bench_runner.js
-    ```
+```bash
+npm run benchmark
+```
 
 This runs a few iterations of each benchmark (min of 5) for both Wasm (if available) and JS and compares the execution time.
 
@@ -60,5 +42,5 @@ This runs a few iterations of each benchmark (min of 5) for both Wasm (if availa
 
 | Benchmark | JS (ms) | Wasm IC (ms) | Wasm No IC (ms) | Ratio Wasm(IC)/JS | Ratio Wasm(NoIC)/JS |
 |---|---|---|---|---|---|
-| fib.js | 55.1640 | 4877.1019 | 5862.7257 | 88.41 | 106.28 |
-| field_access.js | 62.2344 | 39.4273 | 45.6805 | 0.63 | 0.73 |
+| fib.js | 52.0147 | 3539.2465 | 3674.7785 | 68.04 | 70.65 |
+| field_access.js | 47.5827 | 33.5830 | 27.3252 | 0.71 | 0.57 |
