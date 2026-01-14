@@ -41,13 +41,13 @@ export function compileStatement(stmt: ts.Statement, ctx: CompilationContext, dr
                 ? compileBody(stmt.elseStatement, ctx, dropResult)
                 : compileStatement(stmt.elseStatement, ctx, dropResult);
         } else {
-             // If no else, and we expect a value, we must return null
-             if (!dropResult) {
-                 elseBody = '(ref.null any)';
-             } else {
-                 // if dropResult, else body can be empty
-                 elseBody = '(nop)';
-             }
+            // If no else, and we expect a value, we must return null
+            if (!dropResult) {
+                elseBody = '(ref.null any)';
+            } else {
+                // if dropResult, else body can be empty
+                elseBody = '(nop)';
+            }
         }
 
         if (dropResult) {
@@ -63,7 +63,6 @@ export function compileStatement(stmt: ts.Statement, ctx: CompilationContext, dr
                 (else ${elseBody})
             )`;
         }
-
     } else if (ts.isForStatement(stmt)) {
         // for (initializer; condition; incrementor) statement
         // (block $break
@@ -81,11 +80,11 @@ export function compileStatement(stmt: ts.Statement, ctx: CompilationContext, dr
         // Initializer
         if (stmt.initializer) {
             if (ts.isVariableDeclarationList(stmt.initializer)) {
-                 // Reuse VariableStatement logic, but we need to handle it carefully.
-                 // compileStatement expects a Statement. VariableDeclarationList is not a Statement.
-                 // But VariableStatement contains VariableDeclarationList.
-                 // We can synthesize a VariableStatement or just iterate declarations.
-                 for (const decl of stmt.initializer.declarations) {
+                // Reuse VariableStatement logic, but we need to handle it carefully.
+                // compileStatement expects a Statement. VariableDeclarationList is not a Statement.
+                // But VariableStatement contains VariableDeclarationList.
+                // We can synthesize a VariableStatement or just iterate declarations.
+                for (const decl of stmt.initializer.declarations) {
                     if (ts.isIdentifier(decl.name)) {
                         const varName = decl.name.text;
                         const localName = `$user_${varName}`;
@@ -97,7 +96,7 @@ export function compileStatement(stmt: ts.Statement, ctx: CompilationContext, dr
                             code += `(local.set ${localName} (ref.null any))\n`;
                         }
                     }
-                 }
+                }
             } else {
                 // Initializer expression, drop result
                 code += compileExpression(stmt.initializer, ctx, true) + '\n';
@@ -123,9 +122,9 @@ export function compileStatement(stmt: ts.Statement, ctx: CompilationContext, dr
         // If it's a single statement, compileStatement handles it.
         // We always want to drop the result of the body in a loop (statement context).
         if (ts.isBlock(stmt.statement)) {
-             code += compileBody(stmt.statement, ctx, true) + '\n';
+            code += compileBody(stmt.statement, ctx, true) + '\n';
         } else {
-             code += compileStatement(stmt.statement, ctx, true) + '\n';
+            code += compileStatement(stmt.statement, ctx, true) + '\n';
         }
 
         // Incrementor
@@ -146,34 +145,34 @@ export function compileStatement(stmt: ts.Statement, ctx: CompilationContext, dr
 }
 
 export function compileBody(body: ts.Block | undefined, ctx: CompilationContext, dropResult: boolean = false): string {
-  if (!body) {
-      return dropResult ? '' : '(ref.null any)';
-  }
+    if (!body) {
+        return dropResult ? '' : '(ref.null any)';
+    }
 
-  // Filter out empty statements but we can't filter compiled strings directly as we need index
-  const statements = body.statements;
+    // Filter out empty statements but we can't filter compiled strings directly as we need index
+    const statements = body.statements;
 
-  if (statements.length === 0) {
-      return dropResult ? '' : '(ref.null any)';
-  }
+    if (statements.length === 0) {
+        return dropResult ? '' : '(ref.null any)';
+    }
 
-  let code = '';
-  for (let i = 0; i < statements.length; i++) {
-      const isLast = i === statements.length - 1;
-      // If it's the last statement, we respect dropResult.
-      // If it's not the last, we always drop (dropResult=true).
-      const shouldDrop = isLast ? dropResult : true;
+    let code = '';
+    for (let i = 0; i < statements.length; i++) {
+        const isLast = i === statements.length - 1;
+        // If it's the last statement, we respect dropResult.
+        // If it's not the last, we always drop (dropResult=true).
+        const shouldDrop = isLast ? dropResult : true;
 
-      const stmtCode = compileStatement(statements[i], ctx, shouldDrop);
-      if (stmtCode !== '') {
-          code += stmtCode + '\n';
-      }
-  }
+        const stmtCode = compileStatement(statements[i], ctx, shouldDrop);
+        if (stmtCode !== '') {
+            code += stmtCode + '\n';
+        }
+    }
 
-  // If code is empty and we expect a value, return null
-  if (code === '' && !dropResult) {
-      return '(ref.null any)';
-  }
+    // If code is empty and we expect a value, return null
+    if (code === '' && !dropResult) {
+        return '(ref.null any)';
+    }
 
-  return code;
+    return code;
 }

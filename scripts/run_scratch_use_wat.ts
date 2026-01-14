@@ -10,7 +10,7 @@ const scratchDir = path.join(projectRoot, 'scratch', 'use_wat');
 
 async function run() {
     const files = fs.readdirSync(scratchDir);
-    const watFiles = files.filter(f => f.endsWith('.wat'));
+    const watFiles = files.filter((f) => f.endsWith('.wat'));
 
     console.log(`Found ${watFiles.length} WAT examples in ${scratchDir}:`, watFiles);
 
@@ -22,10 +22,10 @@ async function run() {
         try {
             const watText = fs.readFileSync(filePath, 'utf-8');
 
-            console.log("Parsing...");
+            console.log('Parsing...');
             module = binaryen.parseText(watText);
 
-            console.log("Setting features (GC | ReferenceTypes | Strings)...");
+            console.log('Setting features (GC | ReferenceTypes | Strings)...');
             module.setFeatures(binaryen.Features.GC | binaryen.Features.ReferenceTypes | binaryen.Features.Strings);
 
             if (!module.validate()) {
@@ -35,7 +35,7 @@ async function run() {
                 continue;
             }
 
-            console.log("Optimizing...");
+            console.log('Optimizing...');
             module.optimize();
 
             const optimizedWat = module.emitText();
@@ -61,7 +61,6 @@ async function run() {
                 const outPath = path.join(scratchDir, `${file}.out`);
                 fs.writeFileSync(outPath, result.toString());
                 console.log(`Output written to ${outPath}`);
-
             } catch (e) {
                 console.error(`Execution failed for ${file}:`, e);
             }
@@ -71,10 +70,10 @@ async function run() {
             if (module) module.dispose();
         }
     }
-    console.log("\nAll examples processed successfully!");
+    console.log('\nAll examples processed successfully!');
 }
 
-run().catch(e => {
+run().catch((e) => {
     console.error(e);
     process.exit(1);
 });

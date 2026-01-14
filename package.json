@@ -4,8 +4,11 @@
   "description": "Compile JS to Wasm GC - Prototype 01",
   "main": "index.js",
   "scripts": {
-    "test": "ts-node --esm scripts/run_testdata.ts",
-    "benchmark": "ts-node --esm scripts/run_benchmark.ts"
+    "test": "tsx scripts/run_testdata.ts",
+    "benchmark": "tsx scripts/run_benchmark.ts",
+    "lint": "eslint 'src/**/*.ts' 'scripts/**/*.ts'",
+    "format": "prettier --write 'src/**/*.ts' 'scripts/**/*.ts'",
+    "build:runtime": "tsx scripts/build_runtime.ts"
   },
   "repository": {
     "type": "git",
@@ -25,5 +28,14 @@
     "esbuild": "^0.27.2",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.53.0",
+    "@typescript-eslint/parser": "^8.53.0",
+    "eslint": "^9.39.2",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "prettier": "^3.7.4",
+    "tsx": "^4.19.2"
   }
 }

@@ -13,7 +13,7 @@ export function compileFunction(func: ts.FunctionDeclaration, options?: Compiler
     const ctx = new CompilationContext(options);
 
     // Scan parameters to add to locals
-    func.parameters.forEach(param => {
+    func.parameters.forEach((param) => {
         if (ts.isIdentifier(param.name)) {
             ctx.addLocal(`$user_${param.name.text}`, 'anyref');
         }
@@ -25,7 +25,7 @@ export function compileFunction(func: ts.FunctionDeclaration, options?: Compiler
     // Generate locals declaration (exclude parameters)
     let localsDecl = '';
     ctx.getLocals().forEach((type, name) => {
-        const isParam = func.parameters.some(p => ts.isIdentifier(p.name) && `$user_${p.name.text}` === name);
+        const isParam = func.parameters.some((p) => ts.isIdentifier(p.name) && `$user_${p.name.text}` === name);
         if (!isParam) {
             localsDecl += `(local ${name} ${type})\n`;
         }
@@ -33,10 +33,10 @@ export function compileFunction(func: ts.FunctionDeclaration, options?: Compiler
 
     // Generate params declaration
     let paramsDecl = '';
-    func.parameters.forEach(param => {
-         if (ts.isIdentifier(param.name)) {
-             paramsDecl += ` (param $user_${param.name.text} anyref)`;
-         }
+    func.parameters.forEach((param) => {
+        if (ts.isIdentifier(param.name)) {
+            paramsDecl += ` (param $user_${param.name.text} anyref)`;
+        }
     });
 
     return `
